@@ -1,0 +1,26 @@
+{
+  "id": "blueprint",
+  "name": "Business Blueprint",
+  "description": "Generates a complete Business Blueprint covering As-Is, To-Be, gap analysis, RACI and integration points",
+  "version": "1.0.0",
+  "phase": "explore",
+  "category": "documentation",
+  "projectTypes": ["s4hana","ecc","btp","oracle","workday","salesforce","custom"],
+  "icon": "📋",
+  "color": "#1a5c1a",
+  "inputs": {
+    "required": ["projectName","processName","description"],
+    "optional": ["client","sapSystem","module","preparedBy","version"],
+    "fromAgents": [],
+    "fromContext": ["projectName","client","systemDetails"]
+  },
+  "outputs": {
+    "produces": "blueprint_{projectName}_{version}.html",
+    "contextKeys": ["process","asIs","toBe","gaps","integrations","roles"]
+  },
+  "suggests": ["functional-spec","interface-design","test-scripts"],
+  "model": "claude-sonnet-4-6",
+  "maxTokens": 8000,
+  "knowledge": ["sap/activate-methodology.md","sap/btp-integration-best-practices.md"],
+  "tags": ["document","process","blueprint","explore"]
+}

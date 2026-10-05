@@ -1,0 +1,23 @@
+{
+  "app": { "name": "DeliverAI", "tagline": "AI agents for every project phase", "version": "1.0.0" },
+  "branding": { "primaryColor": "#0070F2", "logoText": "DeliverAI" },
+  "agents": { "autoDiscover": true, "repoPath": "agents/", "defaultModel": "claude-sonnet-4-6", "defaultMaxTokens": 8000, "timeout": 300000 },
+  "features": { "projectWorkspace": true, "contextGrounding": true, "agentChaining": true, "btpDeployment": true, "githubIntegration": true },
+  "phases": [
+    { "id": "discover", "label": "Discover", "icon": "🔍", "color": "#1a5276" },
+    { "id": "explore",  "label": "Explore",  "icon": "🗺",  "color": "#1a5c1a" },
+    { "id": "realize",  "label": "Realize",  "icon": "🔨",  "color": "#7d6608" },
+    { "id": "test",     "label": "Test",     "icon": "🧪",  "color": "#7b241c" },
+    { "id": "deploy",   "label": "Deploy",   "icon": "🚀",  "color": "#6c3483" },
+    { "id": "run",      "label": "Run",      "icon": "▶️",   "color": "#1a4a8c" }
+  ],
+  "projectTypes": [
+    { "id": "s4hana",     "label": "SAP S/4HANA",    "icon": "🏢" },
+    { "id": "btp",        "label": "SAP BTP",         "icon": "☁️" },
+    { "id": "ecc",        "label": "SAP ECC",         "icon": "🏛" },
+    { "id": "oracle",     "label": "Oracle",          "icon": "🔶" },
+    { "id": "workday",    "label": "Workday",         "icon": "💼" },
+    { "id": "salesforce", "label": "Salesforce",      "icon": "☁️" },
+    { "id": "custom",     "label": "Custom / Other",  "icon": "⚙️" }
+  ]
+}

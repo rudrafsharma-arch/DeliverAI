@@ -1,0 +1,26 @@
+{
+  "id": "functional-spec",
+  "name": "Functional Specification",
+  "description": "Complete FS with field mappings, business rules and authorization requirements",
+  "version": "1.0.0",
+  "phase": "realize",
+  "category": "documentation",
+  "projectTypes": ["s4hana","ecc","btp","oracle","workday","salesforce","custom"],
+  "icon": "📄",
+  "color": "#7d6608",
+  "inputs": {
+    "required": ["projectName","processName","description"],
+    "optional": ["client","sapSystem","module","preparedBy","version"],
+    "fromAgents": ["blueprint"],
+    "fromContext": ["projectName","client","systemDetails","process","gaps"]
+  },
+  "outputs": {
+    "produces": "functional-spec_{projectName}_{version}.html",
+    "contextKeys": ["requirements","fieldMappings","businessRules"]
+  },
+  "suggests": ["technical-spec","test-scripts"],
+  "model": "claude-sonnet-4-6",
+  "maxTokens": 8000,
+  "knowledge": ["sap/activate-methodology.md"],
+  "tags": ["document","functional","realize"]
+}
