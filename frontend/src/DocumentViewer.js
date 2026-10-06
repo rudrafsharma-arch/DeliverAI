@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import ApprovalWorkflow from './ApprovalWorkflow';
+
 
 const BLUE = '#0070F2', GREEN = '#16a34a', RED = '#dc2626';
 
@@ -8,6 +10,7 @@ export default function DocumentViewer({ job, onClose }) {
   const [currentHtml, setCurrentHtml] = useState(job.result?.html || '');
   const [originalHtml, setOriginalHtml] = useState(job.result?.html || '');
   const [refined, setRefined] = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState(job.approvalStatus || 'draft');
   const [error, setError] = useState(null);
 
   const downloadHTML = () => {
@@ -77,7 +80,12 @@ export default function DocumentViewer({ job, onClose }) {
         </div>
       </div>
 
-      <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, padding:14 }}>
+      <ApprovalWorkflow
+        job={{...job, approvalStatus}}
+        onStatusChange={(jobId, newStatus) => setApprovalStatus(newStatus)}
+      />
+
+      <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, padding:14, opacity: approvalStatus==='locked'?0.5:1, pointerEvents: approvalStatus==='locked'?'none':'auto' }}>
         <div style={{ fontWeight:600, fontSize:13, marginBottom:6 }}>Refine with AI</div>
         <div style={{ fontSize:11, color:'#94a3b8', marginBottom:8 }}>Tell the agent what to change — it will regenerate the improved document</div>
         <div style={{ display:'flex', gap:8 }}>
