@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Settings from './Settings';
+import AIAssistant from './AIAssistant';
 import Activity from './Activity';
 import { startJob, getRunningCount, subscribe, unsubscribe, importJob, updateApproval } from './JobManager';
 
