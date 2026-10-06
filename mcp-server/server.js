@@ -356,3 +356,148 @@ app.listen(MCP_PORT, () => {
   console.log('║  AI Assistant: enabled                       ║');
   console.log('╚══════════════════════════════════════════════╝\n');
 });
+
+// ── Orchestration Endpoint ────────────────────────────────────────────────────
+const Orchestrator = require('./orchestrator');
+
+app.get('/orchestrate', async (req, res) => {
+  const { projectId, ...formData } = req.query;
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.flushHeaders();
+
+  const send = (type, data) => {
+    if (!res.writableEnded) res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
+  };
+
+  const gitBash = process.env.GIT_BASH_PATH;
+  const claudePath = process.env.CLAUDE_PATH;
+  if (!gitBash || !claudePath) { send('error', 'Claude not configured'); res.end(); return; }
+
+  const orch = new Orchestrator(send, projectId, gitBash, claudePath);
+
+  try {
+    // Step 1 — Read architect prompt
+    const architectDir = path.join(__dirname, '..', 'agents', 'architect');
+    const architectPrompt = fs.readFileSync(path.join(architectDir, 'prompt.md'), 'utf8');
+    const knowledgeBase = loadKnowledge(['sap/activate-methodology.md', 'sap/btp-integration-best-practices.md', 'sap/rap-guide.md']);
+
+    // Step 2 — Build architect prompt with user inputs
+    const fullPrompt = `${architectPrompt}
+
+## KNOWLEDGE BASE
+${knowledgeBase}
+
+## PROJECT INPUTS
+Project Name: ${formData.projectName || 'Unknown'}
+Client: ${formData.client || 'Unknown'}
+Industry: ${formData.industry || 'Unknown'}
+Requirement: ${formData.requirement || ''}
+Current System Landscape: ${formData.systemLandscape || ''}
+Existing Licenses: ${formData.existingLicenses || 'Unknown'}
+Budget: ${formData.budget || 'Not defined'}
+Timeline: ${formData.timeline || 'Not defined'}
+Team Size: ${formData.teamSize || 'Not defined'}
+Delivery Package: ${formData.deliveryPackage || 'Full Delivery Package'}
+
+## INSTRUCTIONS
+1. Analyse the requirement and landscape
+2. Recommend the best SAP solution
+3. Design HLD and LLD
+4. Output an AGENT_PLAN_START...AGENT_PLAN_END block with this JSON structure:
+{
+  "agents": [
+    { "id": "blueprint", "name": "Business Blueprint", "phase": 1, "parallel": true },
+    { "id": "functional-spec", "name": "Functional Spec", "phase": 2, "parallel": true, "dependsOn": ["blueprint"] }
+  ],
+  "phases": [
+    { "phase": 1, "name": "Discovery", "agents": ["blueprint"] },
+    { "phase": 2, "name": "Design", "agents": ["functional-spec"] }
+  ]
+}
+
+5. If you need new agents, output RUNTIME_AGENT_START...RUNTIME_AGENT_END blocks
+6. Then generate the full HTML architecture document
+
+Now analyse and deliver.`;
+
+    send('status', 'Architect is analysing your requirement...');
+
+    // Step 3 — Run architect agent
+    orch.log('🏗️ Solution Architect starting analysis...', 'orchestrator');
+
+    const architectOutput = await orch.runSubagent(
+      'architect', 'Solution Architect', fullPrompt, 0
+    );
+
+    // Step 4 — Parse architect output for agent plan
+    orch.log('📋 Parsing agent execution plan...', 'orchestrator');
+    const plan = orch.parseArchitectOutput(architectOutput);
+
+    // Step 5 — Extract HTML from architect output
+    const architectHTML = extractHTML(architectOutput);
+    if (architectHTML && architectHTML.length > 200) {
+      const version = formData.version || '1.0';
+      const safeName = (formData.projectName || 'project').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const fileName = `architect_${safeName}_v${version}_${Date.now()}.html`;
+      if (projectId) {
+        const dir = getProjectDir(projectId);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, fileName), architectHTML, 'utf8');
+        const project = loadProject(projectId);
+        if (project) {
+          project.documents = project.documents || [];
+          project.documents.push({ agentId: 'architect', agentName: 'Solution Architect', fileName, version, generatedAt: new Date().toISOString() });
+          saveProject(project);
+        }
+      }
+      send('architect_complete', { html: architectHTML, fileName });
+    }
+
+    // Step 6 — Run subagents by phase if plan exists
+    if (plan.selectedAgents.length > 0) {
+      orch.log(`🎯 Architect selected ${plan.selectedAgents.length} agents`, 'orchestrator');
+
+      const phases = {};
+      plan.selectedAgents.forEach(a => {
+        if (!phases[a.phase]) phases[a.phase] = [];
+        phases[a.phase].push(a);
+      });
+
+      for (const [phaseNum, agents] of Object.entries(phases)) {
+        orch.log(`⚡ Phase ${phaseNum}: Running ${agents.map(a => a.name).join(', ')}`, 'orchestrator');
+        const context = orch.getContext();
+
+        const subagentTasks = agents.map(a => {
+          const agentManifest = AGENTS[a.id];
+          if (!agentManifest) return null;
+          const agentPromptPath = path.join(__dirname, '..', 'agents', a.id, 'prompt.md');
+          const agentPrompt = fs.existsSync(agentPromptPath) ? fs.readFileSync(agentPromptPath, 'utf8') : '';
+          const subPrompt = `${agentPrompt}\n\n## ARCHITECT CONTEXT\n${context}\n\n## PROJECT\nProject: ${formData.projectName}\nClient: ${formData.client}\nRequirement: ${formData.requirement}\n\nGenerate the complete document now.`;
+          return { id: a.id, name: a.name, prompt: subPrompt };
+        }).filter(Boolean);
+
+        await orch.runParallel(subagentTasks, phaseNum);
+      }
+    }
+
+    orch.log('🎉 Orchestration complete!', 'orchestrator');
+    send('orchestration_complete', {
+      completedAgents: Object.keys(orch.completedAgents),
+      failedAgents: Object.keys(orch.failedAgents),
+      runtimeAgents: plan.runtimeAgents.map(a => a.id)
+    });
+    res.end();
+
+  } catch(e) {
+    send('error', `Orchestration failed: ${e.message}`);
+    orch.killAll();
+    res.end();
+  }
+
+  req.on('close', () => { orch.killAll(); });
+});
+// ─────────────────────────────────────────────────────────────────────────────

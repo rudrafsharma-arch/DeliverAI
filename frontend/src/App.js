@@ -3,6 +3,7 @@ import Settings from './Settings';
 import AIAssistant from './AIAssistant';
 import Activity from './Activity';
 import { startJob, getRunningCount, subscribe, unsubscribe, importJob, updateApproval } from './JobManager';
+import Orchestrator from './Orchestrator';
 
 const api = {
   get: (url) => fetch(url).then(r => r.json()),
@@ -516,6 +517,7 @@ export default function App() {
   const [envConfig, setEnvConfig] = useState({});
   const [runningCount, setRunningCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [showOrchestrator, setShowOrchestrator] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantMinimized, setAssistantMinimized] = useState(false);
   const [assistantPos, setAssistantPos] = useState({ x: window.innerWidth - 420, y: 70 });
@@ -657,6 +659,7 @@ export default function App() {
               style={{ padding:'6px 10px', borderRadius:8, border:'none', background:'#0070F2', cursor:'pointer', fontSize:11, color:'#fff', fontWeight:600 }}>
               {syncing ? `...` : `↑ Save & Sync`}
             </button>
+            <button onClick={()=>setShowOrchestrator(true)} style={{ padding:"6px 14px", borderRadius:8, border:"none", background:"#1e40af", color:"#fff", cursor:"pointer", fontWeight:600, fontSize:13 }}>Architect</button>
             <button onClick={()=>setAssistantOpen(s=>!s)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'#0070F2', color:'#fff'}}>
               AI Assistant
@@ -730,6 +733,12 @@ export default function App() {
            </>
          )}
       </div>
+
+      {showOrchestrator && (
+        <div style={{ position:"fixed", inset:0, zIndex:10000, background:"#f1f5f9" }}>
+          <Orchestrator projects={projects} onClose={()=>setShowOrchestrator(false)} />
+        </div>
+      )}
 
       {/* Floating AI Assistant - draggable */}
       <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999 }}>
