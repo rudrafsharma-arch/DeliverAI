@@ -124,7 +124,7 @@ function ProjectPanel({ projects, selected, onSelect, onCreate }) {
             <div style={{ fontSize:11, fontWeight:500, color:'#64748b', marginBottom:3 }}>Type</div>
             <select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}
               style={{ width:'100%', border:'1px solid #e2e8f0', borderRadius:6, padding:'6px 9px', fontSize:12, outline:'none', background:'#fff' }}>
-              {(config?.projectTypes||[{id:'s4hana-public',label:'SAP S/4HANA Public Cloud'},{id:'s4hana-private',label:'SAP S/4HANA Private Cloud'},{id:'s4hana-onprem',label:'SAP S/4HANA On-Premise'},{id:'ecc',label:'SAP ECC'},{id:'btp',label:'SAP BTP'},{id:'oracle',label:'Oracle'},{id:'workday',label:'Workday'},{id:'salesforce',label:'Salesforce'},{id:'custom',label:'Custom / Other'}]).map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
+              {[{id:'s4hana-public',label:'SAP S/4HANA Public Cloud'},{id:'s4hana-private',label:'SAP S/4HANA Private Cloud (PCE)'},{id:'s4hana-onprem',label:'SAP S/4HANA On-Premise'},{id:'ecc',label:'SAP ECC'},{id:'btp',label:'SAP BTP'},{id:'oracle',label:'Oracle'},{id:'workday',label:'Workday'},{id:'salesforce',label:'Salesforce'},{id:'custom',label:'Custom / Other'}].map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
             </select>
           </div>
           <div style={{ display:'flex', gap:6 }}>
