@@ -189,15 +189,25 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
   const [statusMsg, setStatusMsg] = useState('');
   const [progress, setProgress] = useState('');
   const [error, setError] = useState(null);
+  const [projectDocs, setProjectDocs] = useState([]);
   const [refineInput, setRefineInput] = useState('');
+  const [contextDocs, setContextDocs] = useState([]);
+  const [contextText, setContextText] = useState('');
+  const [showContext, setShowContext] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
   const [refining, setRefining] = useState(false);
   const [originalResult, setOriginalResult] = useState(null);
   const sf = (k,v) => setForm(f=>({...f,[k]:v}));
 
   useEffect(() => {
     if (project) { sf('projectName', project.name||''); sf('client', project.client||''); sf('sapSystem', project.type||''); }
-    if (agent.chainedFormData) {
-      Object.entries(agent.chainedFormData).forEach(([k,v]) => sf(k, v));
+    if (agent.chainedFormData) { Object.entries(agent.chainedFormData).forEach(([k,v]) => sf(k, v)); }
+    // Load project documents for context selection
+    if (project?.id) {
+      fetch('http://localhost:3002/projects/' + project.id)
+        .then(r => r.json())
+        .then(p => setProjectDocs(p.documents || []))
+        .catch(() => {});
     }
   }, [project?.id]);
 
@@ -226,9 +236,24 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
     if (!form.projectName || !form.processName) { setError('Fill in Project Name and Process Name.'); return; }
     if (!form.description) { setError('Please add a description.'); return; }
     setError(null);
+    // Build context string
+    let fullDescription = form.description;
+    if (contextText.trim()) fullDescription += '\n\n--- ADDITIONAL CONTEXT ---\n' + contextText.trim();
+    if (contextDocs.length > 0) fullDescription += '\n\n--- SELECTED DOCUMENTS ---\n' + contextDocs.map(d => d.agentName + ': ' + d.fileName).join('\n');
     if (onStartJob) {
-      onStartJob(agent.id, agent.name, project?.id, form);
+      onStartJob(agent.id, agent.name, project?.id, { ...form, description: fullDescription });
     }
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setUploadedFile({ name: file.name, content: ev.target.result });
+      setContextText(ev.target.result.substring(0, 3000));
+    };
+    reader.readAsText(file);
   };
 
   const handleRefine = () => {
@@ -275,6 +300,52 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
           <div style={{ fontSize:12, color:'#94a3b8' }}>{agent.description}</div>
         </div>
         {project && <div style={{ marginLeft:'auto', fontSize:11, color:'#94a3b8', background:'#f8fafc', padding:'4px 10px', borderRadius:6, border:'1px solid #e2e8f0' }}>Project: {project.name}</div>}
+      </div>
+
+      <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden', marginBottom:12 }}>
+        <button onClick={()=>setShowContext(s=>!s)}
+          style={{ width:'100%', padding:'10px 14px', border:'none', background:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:8, fontSize:13, fontWeight:600 }}>
+          <span>📎</span>
+          <span>Add Context (optional)</span>
+          <span style={{ fontSize:11, color:'#94a3b8', fontWeight:400 }}>— upload docs, paste transcript, or select from project</span>
+          <span style={{ marginLeft:'auto', fontSize:12, color:'#94a3b8' }}>{showContext ? '▲' : '▼'}</span>
+        </button>
+        {showContext && (
+          <div style={{ padding:'0 14px 14px', borderTop:'1px solid #f1f5f9' }}>
+            {projectDocs.length > 0 && (
+              <div style={{ marginBottom:12 }}>
+                <div style={{ fontSize:12, fontWeight:600, color:'#64748b', marginBottom:6, marginTop:10 }}>Select from project documents:</div>
+                {projectDocs.map(doc => (
+                  <label key={doc.fileName} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4, cursor:'pointer', fontSize:12 }}>
+                    <input type="checkbox" onChange={e => {
+                      if (e.target.checked) setContextDocs(d => [...d, doc]);
+                      else setContextDocs(d => d.filter(x => x.fileName !== doc.fileName));
+                    }}/>
+                    <span>{doc.agentName}</span>
+                    <span style={{ color:'#94a3b8', fontSize:11 }}>v{doc.version} · {new Date(doc.generatedAt).toLocaleDateString()}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <div style={{ marginBottom:8 }}>
+              <div style={{ fontSize:12, fontWeight:600, color:'#64748b', marginBottom:6 }}>Upload document (Word, PDF, txt):</div>
+              <input type="file" accept=".txt,.md,.html,.pdf,.docx" onChange={handleFileUpload}
+                style={{ fontSize:12, color:'#64748b' }}/>
+              {uploadedFile && <div style={{ fontSize:11, color:'#16a34a', marginTop:4 }}>Loaded: {uploadedFile.name}</div>}
+            </div>
+            <div>
+              <div style={{ fontSize:12, fontWeight:600, color:'#64748b', marginBottom:6 }}>Paste text or meeting transcript:</div>
+              <textarea value={contextText} onChange={e=>setContextText(e.target.value)}
+                placeholder="Paste meeting notes, requirements, transcript, or any relevant text..."
+                style={{ width:'100%', height:100, border:'1px solid #e2e8f0', borderRadius:8, padding:'8px 10px', fontSize:12, outline:'none', fontFamily:'inherit', resize:'vertical', boxSizing:'border-box' }}/>
+            </div>
+            {(contextText || contextDocs.length > 0 || uploadedFile) && (
+              <div style={{ marginTop:6, fontSize:11, color:'#16a34a', fontWeight:600 }}>
+                Context ready — Claude will use this when generating the document
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {agent.sourceJob && (

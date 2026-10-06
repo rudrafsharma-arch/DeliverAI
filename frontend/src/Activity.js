@@ -107,16 +107,7 @@ export default function Activity({ onChainAgent }) {
               {hasRunning && (
                 <div style={{ fontSize:11, color:BLUE }}>Generating...</div>
               )}
-              {allCompleted && latest.result?.suggests?.length > 0 && onChainAgent && (
-                <div style={{ display:'flex', gap:4 }}>
-                  {latest.result.suggests.slice(0,2).map(s => (
-                    <button key={s} onClick={e=>{ e.stopPropagation(); onChainAgent(s, latest); }}
-                      style={{ padding:'3px 8px', borderRadius:6, border:'1px solid #bfdbfe', background:'#e8f2ff', cursor:'pointer', fontSize:10, color:BLUE, fontWeight:600 }}>
-                      + {s}
-                    </button>
-                  ))}
-                </div>
-              )}
+
               <span style={{ fontSize:12, color:'#94a3b8' }}>{isExpanded ? '▲' : '▼'}</span>
             </div>
 
