@@ -63,6 +63,13 @@ export function cancelJob(jobId) { if (jobs[jobId] && jobs[jobId].cancel) jobs[j
 export function clearJob(jobId) { delete jobs[jobId]; notifyListeners(); }
 export function clearCompleted() { Object.keys(jobs).forEach(id => { if (jobs[id].status !== 'running') delete jobs[id]; }); notifyListeners(); }
 
+export function importJob(job) {
+  if (jobs[job.jobId]) return; // already exists
+  jobs[job.jobId] = job;
+  saveJobs(jobs);
+  notifyListeners();
+}
+
 export function subscribe(id, fn) { listeners[id] = fn; }
 export function unsubscribe(id) { delete listeners[id]; }
 function notifyListeners() { Object.values(listeners).forEach(fn => fn(getJobs())); }

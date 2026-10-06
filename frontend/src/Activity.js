@@ -81,8 +81,20 @@ export default function Activity() {
               {job.status === 'running' && (
                 <button onClick={() => cancelJob(job.jobId)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fef2f2', cursor: 'pointer', fontSize: 11, color: RED }}>Cancel</button>
               )}
-              {job.status === 'completed' && job.result && (
-                <button onClick={() => setViewingJob(job)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: BLUE, cursor: 'pointer', fontSize: 11, color: '#fff', fontWeight: 600 }}>Open</button>
+              {job.status === 'completed' && (
+                <button onClick={async () => {
+                  if (job.result && job.result.html) {
+                    setViewingJob(job);
+                  } else if (job.result && job.result.fileName && job.projectId) {
+                    try {
+                      const r = await fetch('/api/download/' + job.projectId + '/' + job.result.fileName);
+                      const html = await r.text();
+                      setViewingJob({ ...job, result: { ...job.result, html } });
+                    } catch(e) { alert('Could not load document: ' + e.message); }
+                  } else {
+                    alert('Document HTML not available. Please regenerate.');
+                  }
+                }} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: BLUE, cursor: 'pointer', fontSize: 11, color: '#fff', fontWeight: 600 }}>Open</button>
               )}
               {job.status === 'completed' && job.result && (
                 <button onClick={() => downloadResult(job)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: 11, color: '#64748b' }}>Download</button>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Settings from './Settings';
 import Activity from './Activity';
-import { startJob, getRunningCount, subscribe, unsubscribe } from './JobManager';
+import { startJob, getRunningCount, subscribe, unsubscribe, importJob } from './JobManager';
 
 const api = {
   get: (url) => fetch(url).then(r => r.json()),
@@ -444,6 +444,7 @@ export default function App() {
     api.get('/api/config').then(setConfig).catch(()=>{});
     api.get('/api/config/env').then(d => setEnvConfig(d.config||{})).catch(()=>{});
     subscribe('app', () => setRunningCount(getRunningCount()));
+    loadExistingDocs();
     return () => unsubscribe('app');
   }, []);
 
@@ -457,6 +458,29 @@ export default function App() {
 
   const handleConfigure = () => { setView('settings'); setSelectedAgent(null); };
   const handleStartJob = (agentId, agentName, projectId, formData) => { startJob(agentId, agentName, projectId, formData); setView('activity'); setSelectedAgent(null); };
+
+  const loadExistingDocs = async () => {
+    try {
+      const projects = await api.get('/api/projects');
+      projects.forEach(project => {
+        (project.documents || []).forEach(doc => {
+          const jobId = doc.agentId + '-' + new Date(doc.generatedAt).getTime();
+          importJob({
+            jobId,
+            agentId: doc.agentId,
+            agentName: doc.agentName,
+            projectId: project.id,
+            formData: { projectName: project.name, client: project.client, sapSystem: project.type },
+            status: 'completed',
+            logs: [{ time: doc.generatedAt, msg: 'Document loaded from project' }],
+            result: { fileName: doc.fileName, agentName: doc.agentName, suggests: [] },
+            startedAt: doc.generatedAt,
+            completedAt: doc.generatedAt
+          });
+        });
+      });
+    } catch(e) { console.error('Could not load existing docs:', e); }
+  };
 
   const handleSync = async (direction) => {
     setSyncing(true);
