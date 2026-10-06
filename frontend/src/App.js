@@ -458,23 +458,36 @@ export default function App() {
   const handleConfigure = () => { setView('settings'); setSelectedAgent(null); };
   const handleStartJob = (agentId, agentName, projectId, formData) => { startJob(agentId, agentName, projectId, formData); setView('activity'); setSelectedAgent(null); };
 
-  const handleSync = (direction) => {
+  const handleSync = async (direction) => {
     setSyncing(true);
     setSyncMsg(direction === 'push' ? 'Syncing to private repo...' : 'Restoring from private repo...');
-    const es = new EventSource('/api/sync/' + direction);
-    es.onmessage = (e) => {
-      const { message } = JSON.parse(e.data);
-      if (message === 'DONE') {
-        es.close();
-        setSyncing(false);
-        setSyncMsg(direction === 'push' ? 'Synced successfully' : 'Restored successfully');
-        setTimeout(() => setSyncMsg(''), 3000);
-        if (direction === 'pull') api.get('/api/projects').then(setProjects).catch(()=>{});
-      } else {
-        setSyncMsg(message);
+    try {
+      const response = await fetch('/api/sync/' + direction, { method: 'POST' });
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value);
+        const lines = text.split('\n').filter(l => l.startsWith('data: '));
+        lines.forEach(line => {
+          try {
+            const { message } = JSON.parse(line.replace('data: ', ''));
+            if (message === 'DONE') {
+              setSyncing(false);
+              setSyncMsg(direction === 'push' ? 'Synced successfully' : 'Restored successfully');
+              setTimeout(() => setSyncMsg(''), 3000);
+              if (direction === 'pull') api.get('/api/projects').then(setProjects).catch(()=>{});
+            } else {
+              setSyncMsg(message);
+            }
+          } catch(e) {}
+        });
       }
-    };
-    es.onerror = () => { es.close(); setSyncing(false); setSyncMsg('Sync failed'); };
+    } catch(e) {
+      setSyncing(false);
+      setSyncMsg('Sync failed: ' + e.message);
+    }
   };
 
   return (
