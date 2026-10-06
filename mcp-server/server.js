@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const { spawn } = require('child_process');
+const Orchestrator = require('./orchestrator');
 const fs = require('fs');
 const path = require('path');
 
@@ -323,6 +324,7 @@ app.get('/assistant-stream', async (req, res) => {
   if (!gitBash || !claudePath) { send('error', 'Claude not configured'); res.end(); return; }
 
   const { spawn } = require('child_process');
+const Orchestrator = require('./orchestrator');
   const proc = spawn(gitBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], { env: { ...process.env, HOME: process.env.HOME || process.env.USERPROFILE } });
   
   proc.stdin.write(fullPrompt);
