@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getJobs, cancelJob, clearJob, clearCompleted, subscribe, unsubscribe } from './JobManager';
+import DocumentViewer from './DocumentViewer';
+
+
 
 const BLUE = '#0070F2', GREEN = '#16a34a', RED = '#dc2626', AMBER = '#d97706';
 
@@ -9,6 +12,7 @@ const statusIcon = { running: '🔄', completed: '✅', failed: '❌', cancelled
 export default function Activity() {
   const [jobs, setJobs] = useState(getJobs());
   const [expandedJob, setExpandedJob] = useState(null);
+  const [viewingJob, setViewingJob] = useState(null);
 
   useEffect(() => {
     subscribe('activity', setJobs);
@@ -26,6 +30,10 @@ export default function Activity() {
 
   const runningJobs = jobs.filter(j => j.status === 'running');
   const completedJobs = jobs.filter(j => j.status !== 'running');
+
+  if (viewingJob) {
+    return <DocumentViewer job={viewingJob} onClose={() => setViewingJob(null)} />;
+  }
 
   if (jobs.length === 0) {
     return (
@@ -74,7 +82,10 @@ export default function Activity() {
                 <button onClick={() => cancelJob(job.jobId)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fef2f2', cursor: 'pointer', fontSize: 11, color: RED }}>Cancel</button>
               )}
               {job.status === 'completed' && job.result && (
-                <button onClick={() => downloadResult(job)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: BLUE, cursor: 'pointer', fontSize: 11, color: '#fff', fontWeight: 600 }}>Download</button>
+                <button onClick={() => setViewingJob(job)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: BLUE, cursor: 'pointer', fontSize: 11, color: '#fff', fontWeight: 600 }}>Open</button>
+              )}
+              {job.status === 'completed' && job.result && (
+                <button onClick={() => downloadResult(job)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: 11, color: '#64748b' }}>Download</button>
               )}
               {job.status !== 'running' && (
                 <button onClick={() => clearJob(job.jobId)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: 11, color: '#64748b' }}>Remove</button>
