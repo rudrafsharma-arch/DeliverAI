@@ -69,7 +69,7 @@ class Orchestrator {
       setTimeout(() => {
         try { proc.kill(); } catch(e) {}
         reject(new Error(`${agentName} timed out`));
-      }, 300000);
+      }, 600000); // 10 minutes
     });
   }
 

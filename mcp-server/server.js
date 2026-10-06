@@ -383,7 +383,7 @@ app.get('/orchestrate', async (req, res) => {
     // Step 1 — Read architect prompt
     const architectDir = path.join(__dirname, '..', 'agents', 'architect');
     const architectPrompt = fs.readFileSync(path.join(architectDir, 'prompt.md'), 'utf8');
-    const knowledgeBase = loadKnowledge(['sap/activate-methodology.md', 'sap/btp-integration-best-practices.md', 'sap/rap-guide.md']);
+    const knowledgeBase = ''; // Knowledge loaded directly in architect prompt
 
     // Step 2 — Build architect prompt with user inputs
     const fullPrompt = `${architectPrompt}
