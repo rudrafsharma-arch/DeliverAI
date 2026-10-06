@@ -487,6 +487,7 @@ export default function App() {
       projects.forEach(project => {
         (project.documents || []).forEach(doc => {
           const jobId = doc.agentId + '-' + new Date(doc.generatedAt).getTime();
+          const agentManifest = agents.find(a => a.id === doc.agentId);
           importJob({
             jobId,
             agentId: doc.agentId,
@@ -495,7 +496,7 @@ export default function App() {
             formData: { projectName: project.name, client: project.client, sapSystem: project.type },
             status: 'completed',
             logs: [{ time: doc.generatedAt, msg: 'Document loaded from project' }],
-            result: { fileName: doc.fileName, agentName: doc.agentName, suggests: [] },
+            result: { fileName: doc.fileName, agentName: doc.agentName, suggests: agentManifest?.suggests || [] },
             startedAt: doc.generatedAt,
             completedAt: doc.generatedAt
           });
