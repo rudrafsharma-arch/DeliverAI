@@ -57,3 +57,11 @@ Description: {{description}}
 
 ## CRITICAL
 No markdown. No explanation. Just raw HTML.
+
+## MANDATORY RESPONSIBLE AI RULES
+- Document Status must always be DRAFT
+- Never mark any approver as Approved
+- Leave all approval dates blank for humans to fill
+- Add this notice at top of document: AI-GENERATED DOCUMENT - Requires review and approval by qualified consultants before use
+- Never fabricate approval signatures or dates
+- Sign-off section must have blank fields only
