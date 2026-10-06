@@ -511,7 +511,6 @@ export default function App() {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [phase, setPhase] = useState('all');
   const [showAssistant, setShowAssistant] = useState(false);
-  const [assistantMinimized, setAssistantMinimized] = useState(false);
   const [engineInfo, setEngineInfo] = useState(null);
   const [config, setConfig] = useState({ app:{ name:'DeliverAI', tagline:'AI agents for every project phase' } });
   const [envConfig, setEnvConfig] = useState({});
