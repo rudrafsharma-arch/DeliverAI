@@ -30,7 +30,7 @@ function isConfigured(connectionId, envConfig) {
 }
 
 function ConnectionBadge({ connId, configured, onConfigure }) {
-  const icons = { claude:'ðŸ¤–', btp:'â˜ï¸', s4:'ðŸ¢', github:'ðŸ™', aicore:'ðŸ§ ', hana:'ðŸ—„ï¸', snow:'ðŸŽ«', joule:'ðŸ’¬' };
+  const icons = { claude:'AI', btp:'BTP', s4:'S4', github:'GH', aicore:'AIC', hana:'DB', snow:'SN', joule:'J' };
   return (
     <span onClick={() => !configured && onConfigure(connId)}
       title={connId + (configured ? ' configured' : ' not configured - click to configure')}
@@ -38,7 +38,7 @@ function ConnectionBadge({ connId, configured, onConfigure }) {
         background: configured ? '#f0fdf4' : '#fef2f2',
         color: configured ? '#16a34a' : '#dc2626',
         border: '1px solid ' + (configured ? '#86efac' : '#fecaca') }}>
-      <span>{icons[connId] || 'ðŸ”—'}</span>
+      <span style={{fontSize:8,fontWeight:800}}>{icons[connId]||'?'}</span>
       <span>{configured ? 'OK' : 'Setup'}</span>
     </span>
   );
@@ -714,7 +714,7 @@ export default function App() {
                   </div>
                   {filtered.length===0 ? (
                     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, padding:48, textAlign:'center', color:'#94a3b8' }}>
-                      <div style={{ fontSize:32, marginBottom:10 }}>ðŸ¤–</div>
+                      <div style={{ fontSize:32, marginBottom:10 }}>&#x1F50D;</div>
                       <div style={{ fontSize:14 }}>No agents for this phase</div>
                     </div>
                   ) : (
@@ -726,7 +726,6 @@ export default function App() {
                   )}
                 </div>
         )}
-               )
              </main>
            </>
          )}
