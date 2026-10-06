@@ -306,10 +306,10 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
       <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden', marginBottom:12 }}>
         <button onClick={()=>setShowContext(s=>!s)}
           style={{ width:'100%', padding:'10px 14px', border:'none', background:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:8, fontSize:13, fontWeight:600 }}>
-          <span>ðŸ“Ž</span>
+          <span>+</span>
           <span>Add Context (optional)</span>
-          <span style={{ fontSize:11, color:'#94a3b8', fontWeight:400 }}>â€” upload docs, paste transcript, or select from project</span>
-          <span style={{ marginLeft:'auto', fontSize:12, color:'#94a3b8' }}>{showContext ? 'â–²' : 'â–¼'}</span>
+          <span style={{ fontSize:11, color:'#94a3b8', fontWeight:400 }}> - upload docs, paste transcript, or select from project</span>
+          <span style={{ marginLeft:'auto', fontSize:12, color:'#94a3b8' }}>{showContext ? '+' : 'v'}</span>
         </button>
         {showContext && (
           <div style={{ padding:'0 14px 14px', borderTop:'1px solid #f1f5f9' }}>
@@ -651,11 +651,11 @@ export default function App() {
             {syncMsg && <span style={{ fontSize:10, color:syncing?'#0070F2':'#16a34a', padding:'2px 8px', borderRadius:10, background:syncing?'#e8f2ff':'#f0fdf4', border:'1px solid', borderColor:syncing?'#bfdbfe':'#86efac' }}>{syncMsg}</span>}
             <button onClick={()=>handleSync('pull')} disabled={syncing} title="Restore from private repo"
               style={{ padding:'6px 10px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:11, color:'#64748b' }}>
-              {syncing ? '...' : 'â¬‡ Sync'}
+              {syncing ? `...` : `↓ Sync`}
             </button>
             <button onClick={()=>handleSync('push')} disabled={syncing} title="Save & sync to private repo"
               style={{ padding:'6px 10px', borderRadius:8, border:'none', background:'#0070F2', cursor:'pointer', fontSize:11, color:'#fff', fontWeight:600 }}>
-              {syncing ? '...' : 'â¬† Save & Sync'}
+              {syncing ? `...` : `↑ Save & Sync`}
             </button>
             <button onClick={()=>setAssistantOpen(s=>!s)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'#0070F2', color:'#fff'}}>
