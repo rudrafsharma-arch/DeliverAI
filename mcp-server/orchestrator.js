@@ -54,12 +54,23 @@ class Orchestrator {
       let errorOutput = '';
 
       let lastHeartbeat = Date.now();
+      let timeoutHandle = null;
+
+      const resetTimeout = () => {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+        timeoutHandle = setTimeout(() => {
+          try { proc.kill(); } catch(e) {}
+          reject(new Error(`${agentName} timed out — no response for 3 minutes`));
+        }, 180000); // 3 min silence timeout
+      };
+
+      resetTimeout(); // start the silence detector
+
       proc.stdout.on('data', d => {
         const chunk = d.toString();
         output += chunk;
-        // Stream live chunks to UI
+        resetTimeout(); // reset silence timer on every chunk
         this.send('subagent_progress', { agentId, agentName, chunk });
-        // Send heartbeat every 30 seconds so UI knows it's alive
         if (Date.now() - lastHeartbeat > 30000) {
           lastHeartbeat = Date.now();
           this.send('heartbeat', { agentId, agentName, message: `${agentName} still working... ${Math.round(output.length/1000)}kb generated so far` });
@@ -83,11 +94,7 @@ class Orchestrator {
         }
       });
 
-      // Timeout after 5 minutes
-      setTimeout(() => {
-        try { proc.kill(); } catch(e) {}
-        reject(new Error(`${agentName} timed out`));
-      }, 600000); // 10 minutes
+      // Timeout handled by silence detector above
     });
   }
 
