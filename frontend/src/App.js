@@ -434,6 +434,8 @@ export default function App() {
   const [config, setConfig] = useState({ app:{ name:'DeliverAI', tagline:'AI agents for every project phase' } });
   const [envConfig, setEnvConfig] = useState({});
   const [runningCount, setRunningCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
 
   useEffect(() => {
     api.get('/api/agents').then(setAgents).catch(()=>{});
@@ -456,6 +458,25 @@ export default function App() {
   const handleConfigure = () => { setView('settings'); setSelectedAgent(null); };
   const handleStartJob = (agentId, agentName, projectId, formData) => { startJob(agentId, agentName, projectId, formData); setView('activity'); setSelectedAgent(null); };
 
+  const handleSync = (direction) => {
+    setSyncing(true);
+    setSyncMsg(direction === 'push' ? 'Syncing to private repo...' : 'Restoring from private repo...');
+    const es = new EventSource('/api/sync/' + direction);
+    es.onmessage = (e) => {
+      const { message } = JSON.parse(e.data);
+      if (message === 'DONE') {
+        es.close();
+        setSyncing(false);
+        setSyncMsg(direction === 'push' ? 'Synced successfully' : 'Restored successfully');
+        setTimeout(() => setSyncMsg(''), 3000);
+        if (direction === 'pull') api.get('/api/projects').then(setProjects).catch(()=>{});
+      } else {
+        setSyncMsg(message);
+      }
+    };
+    es.onerror = () => { es.close(); setSyncing(false); setSyncMsg('Sync failed'); };
+  };
+
   return (
     <div style={{ fontFamily:'Inter, Segoe UI, Arial, sans-serif', minHeight:'100vh', background:'#f1f5f9', color:'#0f172a', display:'flex', flexDirection:'column' }}>
       <header style={{ background:'#fff', borderBottom:'1px solid #e2e8f0', padding:'0 20px', position:'sticky', top:0, zIndex:100 }}>
@@ -477,6 +498,15 @@ export default function App() {
           </nav>
           <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
             {engineInfo && <span style={{ fontSize:10, background:'#f0fdf4', color:'#16a34a', padding:'2px 8px', borderRadius:10, border:'1px solid #86efac', fontWeight:500 }}>Connected: {engineInfo.current}</span>}
+            {syncMsg && <span style={{ fontSize:10, color:syncing?'#0070F2':'#16a34a', padding:'2px 8px', borderRadius:10, background:syncing?'#e8f2ff':'#f0fdf4', border:'1px solid', borderColor:syncing?'#bfdbfe':'#86efac' }}>{syncMsg}</span>}
+            <button onClick={()=>handleSync('pull')} disabled={syncing} title="Restore from private repo"
+              style={{ padding:'6px 10px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:11, color:'#64748b' }}>
+              {syncing ? '...' : '⬇ Sync'}
+            </button>
+            <button onClick={()=>handleSync('push')} disabled={syncing} title="Save & sync to private repo"
+              style={{ padding:'6px 10px', borderRadius:8, border:'none', background:'#0070F2', cursor:'pointer', fontSize:11, color:'#fff', fontWeight:600 }}>
+              {syncing ? '...' : '⬆ Save & Sync'}
+            </button>
             <button onClick={()=>setShowAssistant(s=>!s)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:showAssistant?'#e8f2ff':'#fff', color:showAssistant?BLUE:'#475569', cursor:'pointer', fontSize:12 }}>
               AI Assistant

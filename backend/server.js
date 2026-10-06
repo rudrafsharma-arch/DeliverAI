@@ -138,6 +138,86 @@ app.get('/api/generate-stream', async (req, res) => { res.setHeader('Content-Typ
 app.get('/api/assistant-stream', async (req, res) => { res.setHeader('Content-Type','text/event-stream'); res.setHeader('Cache-Control','no-cache'); res.setHeader('Connection','keep-alive'); res.setHeader('Access-Control-Allow-Origin','*'); res.flushHeaders(); const params = new URLSearchParams(req.query).toString(); try { const r = await fetch(MCP + '/assistant-stream?' + params); r.body.pipe(res); } catch(e) { res.write('data: ' + JSON.stringify({type:'error',data:e.message}) + '\n\n'); res.end(); } });
 app.get('/api/engines', (req, res) => { res.json({ current: process.env.AI_ENGINE || 'claude-code-cli', engines: [{ id:'claude-code-cli', name:'Claude Code CLI', available:true }] }); });
 
+
+// ── Data Sync Routes ──────────────────────────────────────────────────────────
+const { exec } = require('child_process');
+const PROJECTS_DIR = path.join(__dirname, '../projects');
+const DATA_REPO = process.env.DATA_REPO;
+const DATA_TOKEN = process.env.DATA_REPO_TOKEN;
+const DATA_REPO_WITH_TOKEN = DATA_REPO ? DATA_REPO.replace('https://', 'https://' + DATA_TOKEN + '@') : null;
+const DATA_DIR = path.join(__dirname, '../deliverAI-data');
+
+// Clone or pull data repo
+app.post('/api/sync/pull', (req, res) => {
+  if (!DATA_REPO || !DATA_TOKEN) return res.json({ success: false, message: 'Data repo not configured' });
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  const send = msg => res.write('data: ' + JSON.stringify({ message: msg }) + '\n\n');
+  send('Starting sync from private data repo...');
+  const gitBash = process.env.GIT_BASH_PATH || 'C:\\Users\\vikram.f.sharma\\AppData\\Local\\Programs\\Git\\bin\\bash.exe';
+  const cmd = fs.existsSync(DATA_DIR)
+    ? '"' + gitBash + '" --login -c "cd /c/Users/vikram.f.sharma/DeliverAI-repo/deliverAI-data && git pull"'
+    : '"' + gitBash + '" --login -c "cd /c/Users/vikram.f.sharma/DeliverAI-repo && git clone ' + DATA_REPO_WITH_TOKEN + ' deliverAI-data"';
+  exec(cmd, { timeout: 60000 }, (err, stdout, stderr) => {
+    if (err) { send('Error: ' + err.message); }
+    else {
+      send('Sync complete');
+      // Copy projects from data repo to local
+      const dataProjects = path.join(DATA_DIR, 'projects');
+      if (fs.existsSync(dataProjects)) {
+        exec('xcopy "' + dataProjects + '" "' + PROJECTS_DIR + '" /E /I /Y', (e2) => {
+          send(e2 ? 'Warning copying projects: ' + e2.message : 'Projects restored from data repo');
+          send('DONE');
+          res.end();
+        });
+      } else { send('DONE'); res.end(); }
+    }
+  });
+});
+
+// Push projects to data repo
+app.post('/api/sync/push', (req, res) => {
+  if (!DATA_REPO || !DATA_TOKEN) return res.json({ success: false, message: 'Data repo not configured' });
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  const send = msg => res.write('data: ' + JSON.stringify({ message: msg }) + '\n\n');
+  send('Pushing data to private repo...');
+  const gitBash = process.env.GIT_BASH_PATH || 'C:\\Users\\vikram.f.sharma\\AppData\\Local\\Programs\\Git\\bin\\bash.exe';
+  // Clone if not exists
+  if (!fs.existsSync(DATA_DIR)) {
+    exec('"' + gitBash + '" --login -c "cd /c/Users/vikram.f.sharma/DeliverAI-repo && git clone ' + DATA_REPO_WITH_TOKEN + ' deliverAI-data"', { timeout: 30000 }, (err) => {
+      if (err) { send('Error cloning: ' + err.message); res.end(); return; }
+      doPush(gitBash, send, res);
+    });
+  } else { doPush(gitBash, send, res); }
+});
+
+function doPush(gitBash, send, res) {
+  const PROJECTS_DIR_LOCAL = path.join(__dirname, '../projects');
+  const DATA_PROJECTS = path.join(DATA_DIR, 'projects');
+  // Copy projects to data repo
+  exec('xcopy "' + PROJECTS_DIR_LOCAL + '" "' + DATA_PROJECTS + '" /E /I /Y', (err) => {
+    if (err) send('Warning: ' + err.message);
+    else send('Projects copied to data repo');
+    const date = new Date().toISOString().split('T')[0];
+    const username = require('os').userInfo().username;
+    const cmd = '"' + gitBash + '" --login -c "cd /c/Users/vikram.f.sharma/DeliverAI-repo/deliverAI-data && git add -A && git commit -m \"Sync - ' + username + ' - ' + date + '\" && git push"';
+    exec(cmd, { timeout: 60000 }, (err2, stdout) => {
+      if (err2 && !err2.message.includes('nothing to commit')) {
+        send('Error pushing: ' + err2.message);
+      } else {
+        send('Successfully synced to private repo');
+      }
+      send('DONE');
+      res.end();
+    });
+  });
+}
+
 app.listen(PORT, () => {
   console.log('\n╔══════════════════════════════════════════════╗');
   console.log('║  DeliverAI Backend           :' + PORT + '          ║');
