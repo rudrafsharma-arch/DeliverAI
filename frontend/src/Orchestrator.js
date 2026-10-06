@@ -4,109 +4,28 @@ const phaseNames = { 0: 'Architecture', 1: 'Discovery', 2: 'Design', 3: 'Build',
 const statusColors = { running: '#f59e0b', completed: '#22c55e', failed: '#ef4444', queued: '#94a3b8', pending: '#94a3b8' };
 const statusIcons = { running: '⚡', completed: '✅', failed: '❌', queued: '⏳', pending: '⏳' };
 
-export default function Orchestrator({ projects, onClose }) {
+export default function Orchestrator({ projects, onClose, orchState, orchMessages, orchAgents, orchDoc, onStart, onStop }) {
   const [selectedProject, setSelectedProject] = useState(projects?.[0]?.id || '');
-  const [formData, setFormData] = useState({ projectName: '', client: '', industry: '', requirement: '', systemLandscape: '', existingLicenses: '', budget: 'Not defined', timeline: '', teamSize: 'Medium (6-15)', deliveryPackage: 'Full Delivery Package', version: '1.0' });
-  const [running, setRunning] = useState(false);
-  const [agents, setAgents] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [architectDoc, setArchitectDoc] = useState(null);
-  const [runtimeAgents, setRuntimeAgents] = useState([]);
-  const [completedAgents, setCompletedAgents] = useState([]);
-  const [currentPhase, setCurrentPhase] = useState(null);
+  const [formData, setFormData] = useState({ projectName: '', client: '', industry: 'Manufacturing', requirement: '', systemLandscape: '', existingLicenses: '', budget: 'Not defined', timeline: '', version: '1.0' });
+  const [runtimeAgents] = useState([]);
   const messagesEndRef = useRef(null);
-  const eventSourceRef = useRef(null);
+
+  const running = orchState === 'running';
+  const agents = orchAgents || [];
+  const messages = orchMessages || [];
+  const architectDoc = orchDoc;
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-
-  const addMessage = (msg) => setMessages(prev => [...prev, { ...msg, id: Date.now() + Math.random() }]);
 
   const start = () => {
     if (!formData.projectName || !formData.requirement || !formData.systemLandscape) {
       alert('Please fill in Project Name, Requirement and System Landscape');
       return;
     }
-    setRunning(true);
-    setAgents([{ id: 'architect', name: 'Solution Architect', status: 'running', phase: 0, isOrchestrator: true }]);
-    setMessages([]);
-    setArchitectDoc(null);
-    setRuntimeAgents([]);
-    setCompletedAgents([]);
-    setCurrentPhase(0);
-
-    const params = new URLSearchParams({ ...formData, projectId: selectedProject });
-    const es = new EventSource(`http://localhost:3002/orchestrate?${params}`);
-    eventSourceRef.current = es;
-
-    es.onmessage = (e) => {
-      const { type, data } = JSON.parse(e.data);
-
-      if (type === 'orchestrator') {
-        addMessage({ role: 'architect', text: data.message, time: new Date().toLocaleTimeString() });
-      }
-      else if (type === 'subagent_start') {
-        addMessage({ role: 'system', text: `Spawning subagent: ${data.agentName}`, time: new Date().toLocaleTimeString() });
-        setAgents(prev => {
-          const exists = prev.find(a => a.id === data.agentId);
-          if (exists) return prev.map(a => a.id === data.agentId ? { ...a, status: 'running' } : a);
-          return [...prev, { id: data.agentId, name: data.agentName, status: 'running', phase: data.phase }];
-        });
-        setCurrentPhase(data.phase);
-      }
-      else if (type === 'subagent_progress') {
-        setAgents(prev => prev.map(a => a.id === data.agentId ? { ...a, progress: (a.progress || '') + data.chunk } : a));
-      }
-      else if (type === 'subagent_status') {
-        setAgents(prev => prev.map(a => a.id === data.agentId ? { ...a, status: data.status } : a));
-        if (data.status === 'completed') {
-          addMessage({ role: data.agentId, text: `✅ ${data.agentName} completed successfully`, time: new Date().toLocaleTimeString() });
-          setCompletedAgents(prev => [...prev, data.agentId]);
-        }
-        if (data.status === 'failed') {
-          addMessage({ role: 'error', text: `❌ ${data.agentName} failed`, time: new Date().toLocaleTimeString() });
-        }
-      }
-      else if (type === 'runtime_agent_created') {
-        setRuntimeAgents(prev => [...prev, data]);
-        addMessage({ role: 'architect', text: `🆕 Created new agent: ${data.agentName}`, time: new Date().toLocaleTimeString() });
-        setAgents(prev => [...prev, { id: data.agentId, name: data.agentName, status: 'queued', phase: 99, isRuntime: true }]);
-      }
-      else if (type === 'architect_complete') {
-        setArchitectDoc(data);
-        setAgents(prev => prev.map(a => a.id === 'architect' ? { ...a, status: 'completed' } : a));
-        addMessage({ role: 'architect', text: '📋 Architecture document ready. Spawning subagents...', time: new Date().toLocaleTimeString() });
-      }
-      else if (type === 'orchestration_complete') {
-        setRunning(false);
-        addMessage({ role: 'system', text: `🎉 Orchestration complete! ${data.completedAgents?.length || 0} agents completed.`, time: new Date().toLocaleTimeString() });
-        setAgents(prev => prev.map(a => a.id === 'architect' ? { ...a, status: 'completed' } : a));
-        es.close();
-      }
-      else if (type === 'error') {
-        setRunning(false);
-        addMessage({ role: 'error', text: `❌ ${data}`, time: new Date().toLocaleTimeString() });
-        es.close();
-      }
-      else if (type === 'status') {
-        addMessage({ role: 'system', text: data, time: new Date().toLocaleTimeString() });
-      }
-      else if (type === 'heartbeat' || type === 'keepalive') {
-        addMessage({ role: 'heartbeat', text: data.message, time: new Date().toLocaleTimeString() });
-      }
-    };
-
-    es.onerror = () => {
-      setRunning(false);
-      addMessage({ role: 'error', text: 'Connection lost', time: new Date().toLocaleTimeString() });
-      es.close();
-    };
+    onStart(formData, selectedProject);
   };
 
-  const stop = () => {
-    eventSourceRef.current?.close();
-    setRunning(false);
-    addMessage({ role: 'system', text: '⛔ Orchestration stopped by user', time: new Date().toLocaleTimeString() });
-  };
+  const stop = () => { onStop && onStop(); };
 
   const phases = [...new Set(agents.map(a => a.phase))].sort();
 
@@ -181,14 +100,14 @@ export default function Orchestrator({ projects, onClose }) {
                     Phase {phase} — {phaseNames[phase] || 'Execution'}
                   </div>
                   {agents.filter(a => a.phase === phase).map(agent => (
-                    <div key={agent.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: agent.status === 'running' ? '#eff6ff' : agent.status === 'completed' ? '#f0fdf4' : agent.status === 'failed' ? '#fef2f2' : '#f8fafc', marginBottom: 6, border: `1px solid ${statusColors[agent.status]}30` }}>
-                      <span style={{ fontSize: 16 }}>{statusIcons[agent.status]}</span>
+                    <div key={agent.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: agent.status === 'running' ? '#eff6ff' : agent.status === 'completed' ? '#f0fdf4' : agent.status === 'failed' ? '#fef2f2' : '#f8fafc', marginBottom: 6, border: `1px solid ${statusColors[agent.status] || '#e2e8f0'}30` }}>
+                      <span style={{ fontSize: 16 }}>{statusIcons[agent.status] || '⏳'}</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{agent.name}</div>
                         {agent.isOrchestrator && <div style={{ fontSize: 10, color: '#1e40af', fontWeight: 700 }}>ORCHESTRATOR</div>}
                         {agent.isRuntime && <div style={{ fontSize: 10, color: '#7c3aed', fontWeight: 700 }}>RUNTIME CREATED</div>}
                       </div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: statusColors[agent.status], textTransform: 'uppercase' }}>{agent.status}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: statusColors[agent.status] || '#94a3b8', textTransform: 'uppercase' }}>{agent.status}</div>
                     </div>
                   ))}
                 </div>
@@ -200,7 +119,7 @@ export default function Orchestrator({ projects, onClose }) {
                 </div>
               )}
               {!running && (
-                <button onClick={() => { setAgents([]); setMessages([]); }} style={{ width: '100%', marginTop: 12, padding: '10px', background: '#1e40af', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                <button onClick={() => { onStop && onStop(); window.location.reload(); }} style={{ width: '100%', marginTop: 12, padding: '10px', background: '#1e40af', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
                   New Orchestration
                 </button>
               )}
@@ -212,7 +131,7 @@ export default function Orchestrator({ projects, onClose }) {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ padding: '12px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: 13, color: '#64748b' }}>
             💬 Live Orchestration Feed
-            {currentPhase !== null && running && <span style={{ marginLeft: 8, background: '#eff6ff', color: '#1e40af', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Phase {currentPhase} — {phaseNames[currentPhase]}</span>}
+            {running && <span style={{ marginLeft: 8, background: '#eff6ff', color: '#1e40af', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Running...</span>}
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {messages.length === 0 && !running && (
@@ -224,12 +143,12 @@ export default function Orchestrator({ projects, onClose }) {
             )}
             {messages.map(msg => (
               <div key={msg.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: msg.role === 'architect' ? '#1e40af' : msg.role === 'error' ? '#ef4444' : msg.role === 'system' ? '#64748b' : msg.role === 'heartbeat' ? '#f59e0b' : '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, color: '#fff', fontWeight: 700 }}>
-                  {msg.role === 'architect' ? '🏗️' : msg.role === 'error' ? '❌' : msg.role === 'system' ? '⚙️' : msg.role === 'heartbeat' ? '💓' : '🤖'}
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: msg.role === 'architect' ? '#1e40af' : msg.role === 'error' ? '#ef4444' : msg.role === 'heartbeat' ? '#f59e0b' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, color: '#fff', fontWeight: 700 }}>
+                  {msg.role === 'architect' ? '🏗️' : msg.role === 'error' ? '❌' : msg.role === 'heartbeat' ? '💓' : '⚙️'}
                 </div>
                 <div style={{ flex: 1, background: '#fff', borderRadius: 10, padding: '10px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                   <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4, fontWeight: 600 }}>
-                    {msg.role === 'architect' ? 'Solution Architect' : msg.role === 'system' ? 'System' : msg.role === 'error' ? 'Error' : msg.role === 'heartbeat' ? 'Live Update' : msg.role} · {msg.time}
+                    {msg.role === 'architect' ? 'Solution Architect' : msg.role === 'heartbeat' ? 'Live Update' : msg.role === 'error' ? 'Error' : 'System'} · {msg.time}
                   </div>
                   <div style={{ fontSize: 13, color: '#1e293b', lineHeight: 1.5 }}>{msg.text}</div>
                 </div>
@@ -249,35 +168,23 @@ export default function Orchestrator({ projects, onClose }) {
           </div>
         </div>
 
-        {/* Right — Architect Document Preview */}
+        {/* Right — Architecture Document */}
         {architectDoc && (
           <div style={{ width: 420, borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '12px 16px', background: '#fff', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: 13, color: '#1e40af' }}>
-              📋 Architecture Document
+            <div style={{ padding: '10px 16px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 13, color: '#1e40af', flex: 1 }}>📋 Architecture Document</span>
+              <button onClick={() => { const w = window.open('', '_blank'); w.document.write(architectDoc.html); w.document.close(); }} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>⛶ Full</button>
+              <button onClick={() => { const blob = new Blob([architectDoc.html], {type: 'text/html'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = architectDoc.fileName || 'architecture.html'; a.click(); }} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#1e40af', color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Download</button>
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <iframe srcDoc={architectDoc.html} style={{ width: '100%', height: '100%', border: 'none' }} title="Architecture Document"
-                onLoad={(e) => {
-                  try {
-                    const doc = e.target.contentDocument;
-                    doc.querySelectorAll('a[href^="#"]').forEach(a => {
-                      a.addEventListener('click', (ev) => {
-                        ev.preventDefault();
-                        const target = doc.querySelector(a.getAttribute('href'));
-                        if (target) target.scrollIntoView({ behavior: 'smooth' });
-                      });
-                    });
-                  } catch(e) {}
-                }}
+                onLoad={(e) => { try { const doc = e.target.contentDocument; doc.querySelectorAll('a[href^="#"]').forEach(a => { a.addEventListener('click', (ev) => { ev.preventDefault(); const t = doc.querySelector(a.getAttribute('href')); if (t) t.scrollIntoView({ behavior: 'smooth' }); }); }); } catch(e) {} }}
               />
             </div>
           </div>
         )}
       </div>
-
-      <style>{`
-        @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
-      `}</style>
+      <style>{`@keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }`}</style>
     </div>
   );
 }

@@ -518,6 +518,39 @@ export default function App() {
   const [runningCount, setRunningCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [showOrchestrator, setShowOrchestrator] = useState(false);
+  const [orchState, setOrchState] = useState(null);
+  const [orchMessages, setOrchMessages] = useState([]);
+  const [orchAgents, setOrchAgents] = useState([]);
+  const [orchDoc, setOrchDoc] = useState(null);
+  const orchEventSource = useRef(null);
+
+  const addOrchMessage = (msg) => setOrchMessages(prev => [...prev, { ...msg, id: Date.now() + Math.random() }]);
+
+  const startOrchestration = (formData, projectId) => {
+    setOrchState('running');
+    setOrchAgents([{ id: 'architect', name: 'Solution Architect', status: 'running', phase: 0, isOrchestrator: true }]);
+    setOrchMessages([]);
+    setOrchDoc(null);
+    const params = new URLSearchParams({ ...formData, projectId });
+    const es = new EventSource('http://localhost:3002/orchestrate?' + params);
+    orchEventSource.current = es;
+    es.onmessage = (e) => {
+      const { type, data } = JSON.parse(e.data);
+      if (type === 'orchestrator') addOrchMessage({ role: 'architect', text: data.message, time: new Date().toLocaleTimeString() });
+      else if (type === 'subagent_start') { addOrchMessage({ role: 'system', text: 'Spawning: ' + (data.agentName || data.agentId), time: new Date().toLocaleTimeString() }); setOrchAgents(prev => { const exists = prev.find(a => a.id === data.agentId); if (exists) return prev.map(a => a.id === data.agentId ? { ...a, status: 'running' } : a); return [...prev, { id: data.agentId, name: data.agentName || data.agentId, status: 'running', phase: data.phase }]; }); }
+      else if (type === 'subagent_status') { setOrchAgents(prev => prev.map(a => a.id === data.agentId ? { ...a, status: data.status } : a)); if (data.status === 'completed') addOrchMessage({ role: data.agentId, text: '✅ ' + data.agentName + ' completed', time: new Date().toLocaleTimeString() }); if (data.status === 'failed') addOrchMessage({ role: 'error', text: '❌ ' + data.agentName + ' failed', time: new Date().toLocaleTimeString() }); }
+      else if (type === 'architect_complete') { setOrchDoc(data); setOrchAgents(prev => prev.map(a => a.id === 'architect' ? { ...a, status: 'completed' } : a)); addOrchMessage({ role: 'architect', text: '📋 Architecture ready. Spawning subagents...', time: new Date().toLocaleTimeString() }); }
+      else if (type === 'heartbeat' || type === 'keepalive') addOrchMessage({ role: 'heartbeat', text: data.message, time: new Date().toLocaleTimeString() });
+      else if (type === 'orchestration_complete') { setOrchState('done'); addOrchMessage({ role: 'system', text: '🎉 Done! ' + (data.completedAgents?.length || 0) + ' agents completed.', time: new Date().toLocaleTimeString() }); es.close(); }
+      else if (type === 'error') { setOrchState('failed'); addOrchMessage({ role: 'error', text: '❌ ' + data, time: new Date().toLocaleTimeString() }); es.close(); }
+      else if (type === 'status') addOrchMessage({ role: 'system', text: data, time: new Date().toLocaleTimeString() });
+      else if (type === 'runtime_agent_created') addOrchMessage({ role: 'architect', text: '🆕 Created: ' + data.agentName, time: new Date().toLocaleTimeString() });
+    };
+    es.onerror = () => { setOrchState('failed'); addOrchMessage({ role: 'error', text: 'Connection lost', time: new Date().toLocaleTimeString() }); es.close(); };
+  };
+
+  const stopOrchestration = () => { orchEventSource.current?.close(); setOrchState("stopped"); };
+
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantMinimized, setAssistantMinimized] = useState(false);
   const [assistantPos, setAssistantPos] = useState({ x: window.innerWidth - 420, y: 70 });
@@ -659,7 +692,9 @@ export default function App() {
               style={{ padding:'6px 10px', borderRadius:8, border:'none', background:'#0070F2', cursor:'pointer', fontSize:11, color:'#fff', fontWeight:600 }}>
               {syncing ? `...` : `↑ Save & Sync`}
             </button>
-            <button onClick={()=>setShowOrchestrator(true)} style={{ padding:"6px 14px", borderRadius:8, border:"none", background:"#1e40af", color:"#fff", cursor:"pointer", fontWeight:600, fontSize:13 }}>Architect</button>
+            <button onClick={()=>setShowOrchestrator(true)} style={{ padding:"6px 14px", borderRadius:8, border:"none", background: orchState==='running' ? '#f59e0b' : '#1e40af', color:"#fff", cursor:"pointer", fontWeight:600, fontSize:13 }}>
+              {orchState==='running' ? 'Architect Running' : 'Architect'}
+            </button>
             <button onClick={()=>setAssistantOpen(s=>!s)}
               style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'#0070F2', color:'#fff'}}>
               AI Assistant
@@ -736,7 +771,7 @@ export default function App() {
 
       {showOrchestrator && (
         <div style={{ position:"fixed", inset:0, zIndex:10000, background:"#f1f5f9" }}>
-          <Orchestrator projects={projects} onClose={()=>setShowOrchestrator(false)} />
+          <Orchestrator projects={projects} onClose={()=>setShowOrchestrator(false)} orchState={orchState} orchMessages={orchMessages} orchAgents={orchAgents} orchDoc={orchDoc} onStart={startOrchestration} onStop={stopOrchestration} />
         </div>
       )}
 
