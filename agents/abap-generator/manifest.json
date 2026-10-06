@@ -1,0 +1,63 @@
+{
+  "id": "abap-generator",
+  "name": "ABAP / RAP Generator",
+  "description": "Generates RAP-first ABAP code including CDS Views, Behaviour Definitions, Classes and Reports from Technical Spec",
+  "version": "1.0.0",
+  "phase": "realize",
+  "category": "development",
+  "projectTypes": [
+    "s4hana",
+    "ecc"
+  ],
+  "icon": "💻",
+  "color": "#0070F2",
+  "inputs": {
+    "required": [
+      "projectName",
+      "processName",
+      "description"
+    ],
+    "optional": [
+      "client",
+      "sapSystem",
+      "module",
+      "preparedBy",
+      "version",
+      "objectType"
+    ],
+    "fromAgents": [
+      "technical-spec",
+      "functional-spec"
+    ],
+    "fromContext": [
+      "projectName",
+      "devObjects",
+      "requirements"
+    ]
+  },
+  "outputs": {
+    "produces": "abap-code-{projectName}-{version}.html",
+    "contextKeys": [
+      "abapCode",
+      "cdxViews",
+      "behaviourDefinition"
+    ]
+  },
+  "suggests": [
+    "test-scripts"
+  ],
+  "model": "claude-sonnet-4-6",
+  "maxTokens": 8000,
+  "knowledge": [
+    "sap/abap-standards.md",
+    "sap/rap-restful-abap.md",
+    "general/responsible-ai.md"
+  ],
+  "tags": [
+    "abap",
+    "rap",
+    "cds",
+    "development",
+    "realize"
+  ]
+}
