@@ -196,6 +196,9 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
 
   useEffect(() => {
     if (project) { sf('projectName', project.name||''); sf('client', project.client||''); sf('sapSystem', project.type||''); }
+    if (agent.chainedFormData) {
+      Object.entries(agent.chainedFormData).forEach(([k,v]) => sf(k, v));
+    }
   }, [project?.id]);
 
   const conns = agent.requiredConnections || ['claude'];
@@ -274,6 +277,12 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
         {project && <div style={{ marginLeft:'auto', fontSize:11, color:'#94a3b8', background:'#f8fafc', padding:'4px 10px', borderRadius:6, border:'1px solid #e2e8f0' }}>Project: {project.name}</div>}
       </div>
 
+      {agent.sourceJob && (
+        <div style={{ background:'#e8f2ff', border:'1px solid #bfdbfe', borderRadius:10, padding:'10px 14px', marginBottom:12, fontSize:12, color:'#1e40af', display:'flex', alignItems:'center', gap:8 }}>
+          <span>🔗</span>
+          <span>Chained from <strong>{agent.sourceJob.agentName}</strong> — context pre-filled automatically</span>
+        </div>
+      )}
       {missing.length > 0 && (
         <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:10, padding:'10px 14px', marginBottom:12, fontSize:13, color:'#92400e', display:'flex', alignItems:'center', gap:10 }}>
           <span>Setup required: {missing.join(', ')}</span>
@@ -457,6 +466,19 @@ export default function App() {
   };
 
   const handleConfigure = () => { setView('settings'); setSelectedAgent(null); };
+
+  const handleChainAgent = (agentId, sourceJob) => {
+    // Find the agent
+    const agent = agents.find(a => a.id === agentId);
+    if (!agent) return;
+    // Pre-fill form with context from source job
+    const chainedFormData = {
+      ...sourceJob.formData,
+      description: (sourceJob.formData?.description || '') + '\n\nContext from previous ' + sourceJob.agentName + ': This document was generated as a follow-up to the ' + sourceJob.agentName + ' for ' + (sourceJob.formData?.projectName || 'this project') + '.'
+    };
+    setSelectedAgent({ ...agent, chainedFormData, sourceJob });
+    setView('agents');
+  };
   const handleStartJob = (agentId, agentName, projectId, formData) => { startJob(agentId, agentName, projectId, formData); setView('activity'); setSelectedAgent(null); };
 
   const loadExistingDocs = async () => {
@@ -554,7 +576,7 @@ export default function App() {
 
       <div style={{ display:'flex', flex:1, maxWidth:1400, margin:'0 auto', width:'100%', padding:16, gap:14 }}>
         {view === 'activity' ? (
-          <div style={{ flex:1 }}><Activity /></div>
+          <div style={{ flex:1 }}><Activity onChainAgent={handleChainAgent} /></div>
         ) : view === 'settings' ? (
           <div style={{ flex:1 }}><Settings /></div>
         ) : (

@@ -23,7 +23,7 @@ function groupJobs(jobs) {
   return Object.values(groups).sort((a,b) => new Date(b.jobs[0].startedAt) - new Date(a.jobs[0].startedAt));
 }
 
-export default function Activity() {
+export default function Activity({ onChainAgent }) {
   const [jobs, setJobs] = useState(getJobs());
   const [viewingJob, setViewingJob] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState({});
@@ -106,6 +106,16 @@ export default function Activity() {
               )}
               {hasRunning && (
                 <div style={{ fontSize:11, color:BLUE }}>Generating...</div>
+              )}
+              {allCompleted && latest.result?.suggests?.length > 0 && onChainAgent && (
+                <div style={{ display:'flex', gap:4 }}>
+                  {latest.result.suggests.slice(0,2).map(s => (
+                    <button key={s} onClick={e=>{ e.stopPropagation(); onChainAgent(s, latest); }}
+                      style={{ padding:'3px 8px', borderRadius:6, border:'1px solid #bfdbfe', background:'#e8f2ff', cursor:'pointer', fontSize:10, color:BLUE, fontWeight:600 }}>
+                      + {s}
+                    </button>
+                  ))}
+                </div>
               )}
               <span style={{ fontSize:12, color:'#94a3b8' }}>{isExpanded ? '▲' : '▼'}</span>
             </div>
