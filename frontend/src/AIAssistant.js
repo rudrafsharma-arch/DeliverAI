@@ -46,7 +46,7 @@ function parseIntent(message) {
   return result;
 }
 
-export default function AIAssistant({ onClose, projects, onNavigate }) {
+export default function AIAssistant({ onClose, projects, onNavigate, hideHeader }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Hi! I am your DeliverAI Assistant. I can answer SAP questions AND start agents for you.\n\nTry:\n• "Start a Blueprint for Mars H&W Vendor Invoice project"\n• "Generate a Functional Spec for FI module"\n• "Run all Explore phase agents for my project"\n• "What is SAP Activate methodology?"', type:'text' }
   ]);
@@ -156,14 +156,15 @@ export default function AIAssistant({ onClose, projects, onNavigate }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'#fff', borderRadius:12, border:'1px solid #e2e8f0', overflow:'hidden' }}>
-      <div style={{ padding:'12px 16px', borderBottom:'1px solid #e2e8f0', display:'flex', alignItems:'center', gap:8, background:BLUE }}>
+      {!hideHeader && <div style={{ padding:'12px 16px', borderBottom:'1px solid #e2e8f0', display:'flex', alignItems:'center', gap:8, background:BLUE }}>
         <span style={{ fontSize:20 }}>🤖</span>
         <div>
           <div style={{ fontWeight:700, fontSize:14, color:'#fff' }}>DeliverAI Assistant</div>
           <div style={{ fontSize:10, color:'#bfdbfe' }}>Ask questions · Start agents · Upload docs</div>
         </div>
         {onClose && <button onClick={onClose} style={{ marginLeft:'auto', background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:20, lineHeight:1 }}>×</button>}
-      </div>
+      </div>}
+
 
       <div style={{ flex:1, overflowY:'auto', padding:12, display:'flex', flexDirection:'column', gap:8 }}>
         {messages.map((msg, i) => (
