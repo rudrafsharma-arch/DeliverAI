@@ -87,7 +87,7 @@ export default function Activity() {
                     setViewingJob(job);
                   } else if (job.result && job.result.fileName && job.projectId) {
                     try {
-                      const r = await fetch('/api/download/' + job.projectId + '/' + job.result.fileName);
+                      const r = await fetch('http://localhost:3002/download/' + job.projectId + '/' + job.result.fileName);
                       const html = await r.text();
                       setViewingJob({ ...job, result: { ...job.result, html } });
                     } catch(e) { alert('Could not load document: ' + e.message); }
