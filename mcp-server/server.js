@@ -446,9 +446,9 @@ Now analyse and deliver.`;
       send('architect_complete', { html: architectHTML, fileName });
     }
 
-    // Step 6 — Run subagents by phase if plan exists
-    if (plan.selectedAgents.length > 0) {
+    if (formData.agentPlan) { try { const approved = JSON.parse(formData.agentPlan); if (approved.length > 0) { plan.selectedAgents = approved; } } catch(e) {} }
       orch.log(`🎯 Architect selected ${plan.selectedAgents.length} agents`, 'orchestrator');
+    if (plan.selectedAgents.length > 0) {
 
       const phases = {};
       plan.selectedAgents.forEach(a => {
@@ -469,7 +469,7 @@ Now analyse and deliver.`;
           return { id: a.id, name: a.name, prompt: subPrompt };
         }).filter(Boolean);
 
-        await orch.runParallel(subagentTasks, phaseNum);
+        await orch.runSequential(subagentTasks, phaseNum);
       }
     }
 

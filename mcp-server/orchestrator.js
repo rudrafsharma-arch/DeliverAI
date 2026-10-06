@@ -61,7 +61,7 @@ class Orchestrator {
         timeoutHandle = setTimeout(() => {
           try { proc.kill(); } catch(e) {}
           reject(new Error(`${agentName} timed out — no response for 3 minutes`));
-        }, 180000); // 3 min silence timeout
+        }, 600000); // 10 min silence timeout
       };
 
       resetTimeout(); // start the silence detector
