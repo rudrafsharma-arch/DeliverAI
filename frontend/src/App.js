@@ -188,6 +188,9 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
   const [statusMsg, setStatusMsg] = useState('');
   const [progress, setProgress] = useState('');
   const [error, setError] = useState(null);
+  const [refineInput, setRefineInput] = useState('');
+  const [refining, setRefining] = useState(false);
+  const [originalResult, setOriginalResult] = useState(null);
   const sf = (k,v) => setForm(f=>({...f,[k]:v}));
 
   useEffect(() => {
@@ -222,6 +225,32 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
     if (onStartJob) {
       onStartJob(agent.id, agent.name, project?.id, form);
     }
+  };
+
+  const handleRefine = () => {
+    if (!refineInput.trim() || refining) return;
+    setRefining(true);
+    setOriginalResult(result);
+    const instruction = refineInput.trim();
+    setRefineInput('');
+    const existingContent = result.html.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().substring(0,3000);
+    const refinePrompt = 'You are refining an existing document. Here is the current document content:\n\n' + existingContent + '\n\nUser instruction: ' + instruction + '\n\nGenerate the complete improved HTML document with ALL CSS embedded. Return ONLY HTML starting with DOCTYPE.';
+    const params = new URLSearchParams({ agentId: agent.id, projectId: project?.id||'', projectName: form.projectName||'', processName: form.processName||'', description: refinePrompt, client: form.client||'', sapSystem: form.sapSystem||'', module: form.module||'', preparedBy: form.preparedBy||'', version: form.version||'1.0' });
+    const es = new EventSource('http://localhost:3002/generate-stream?' + params);
+    es.onmessage = (e) => {
+      const { type, data } = JSON.parse(e.data);
+      if (type === 'complete') {
+        es.close();
+        setResult(data);
+        setRefining(false);
+        if (onComplete) onComplete(data);
+      } else if (type === 'error') {
+        es.close();
+        setRefining(false);
+        setError('Refinement failed: ' + data);
+      }
+    };
+    es.onerror = () => { es.close(); setRefining(false); };
   };
 
   const downloadHTML = () => {
@@ -349,6 +378,35 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
           )}
           <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:8, padding:'7px 12px', fontSize:11, color:'#92400e', marginBottom:10 }}>
             To save as PDF: click Print PDF then choose Save as PDF in print dialog
+          </div>
+          <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, padding:16, marginBottom:10 }}>
+            <div style={{ fontWeight:600, fontSize:13, marginBottom:4 }}>Refine with AI</div>
+            <div style={{ fontSize:11, color:'#94a3b8', marginBottom:10 }}>Tell the agent what to change and it will regenerate the document</div>
+            <div style={{ display:'flex', gap:8 }}>
+              <input value={refineInput} onChange={e=>setRefineInput(e.target.value)}
+                onKeyDown={e=>e.key==='Enter'&&handleRefine()}
+                placeholder='e.g. Make executive summary shorter, Add data migration risks, Change ECC to S/4HANA...'
+                style={{ flex:1, border:'1px solid #e2e8f0', borderRadius:8, padding:'8px 11px', fontSize:13, outline:'none', fontFamily:'inherit' }}/>
+              <button onClick={handleRefine} disabled={refining || !refineInput.trim()}
+                style={{ padding:'8px 16px', borderRadius:8, border:'none', background:refining?'#94a3b8':'#0070F2', color:'#fff', cursor:'pointer', fontSize:13, fontWeight:600, whiteSpace:'nowrap' }}>
+                {refining ? 'Refining...' : 'Refine'}
+              </button>
+            </div>
+            {refining && (
+              <div style={{ marginTop:8, fontSize:12, color:'#0070F2', display:'flex', alignItems:'center', gap:6 }}>
+                <div style={{ width:12, height:12, border:'2px solid #bfdbfe', borderTop:'2px solid #0070F2', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+                Claude is refining your document...
+              </div>
+            )}
+            {originalResult && !refining && (
+              <div style={{ marginTop:8, display:'flex', gap:6, alignItems:'center' }}>
+                <span style={{ fontSize:11, color:'#16a34a' }}>Document refined successfully</span>
+                <button onClick={()=>{ setResult(originalResult); setOriginalResult(null); }}
+                  style={{ fontSize:11, padding:'2px 8px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', color:'#64748b' }}>
+                  Undo — restore original
+                </button>
+              </div>
+            )}
           </div>
           <div style={{ border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden' }}>
             <div style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0', padding:'8px 12px', display:'flex', alignItems:'center', gap:5 }}>
