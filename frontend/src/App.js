@@ -511,6 +511,7 @@ export default function App() {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [phase, setPhase] = useState('all');
   const [showAssistant, setShowAssistant] = useState(false);
+  const [assistantMinimized, setAssistantMinimized] = useState(false);
   const [engineInfo, setEngineInfo] = useState(null);
   const [config, setConfig] = useState({ app:{ name:'DeliverAI', tagline:'AI agents for every project phase' } });
   const [envConfig, setEnvConfig] = useState({});
@@ -713,8 +714,13 @@ export default function App() {
         )}
       </div>
       {showAssistant && (
-        <div style={{ position:'fixed', right:16, bottom:16, width:400, height:580, zIndex:1000, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', borderRadius:12 }}>
-          <AIAssistant onClose={()=>setShowAssistant(false)} projects={projects} />
+        <div style={{ position:'fixed', right:16, bottom:16, width:400, zIndex:1000, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', borderRadius:12, overflow:'hidden' }}>
+          <div style={{ display:'flex', alignItems:'center', padding:'10px 14px', background:'#0070F2', cursor:'pointer' }} onClick={()=>setAssistantMinimized(m=>!m)}>
+            <span style={{ fontSize:13, color:'#fff', fontWeight:700, flex:1 }}>🤖 DeliverAI Assistant</span>
+            <button onClick={e=>{e.stopPropagation();setAssistantMinimized(m=>!m)}} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:14 }}>{assistantMinimized?'+':'-'}</button>
+            <button onClick={e=>{e.stopPropagation();setShowAssistant(false)}} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:16, marginLeft:4 }}>×</button>
+          </div>
+          {!assistantMinimized && <div style={{ height:520 }}><AIAssistant projects={projects} hideHeader={true}/></div>}
         </div>
       )}
     </div>
