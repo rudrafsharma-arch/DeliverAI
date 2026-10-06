@@ -517,6 +517,24 @@ export default function App() {
   const [envConfig, setEnvConfig] = useState({});
   const [runningCount, setRunningCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantMinimized, setAssistantMinimized] = useState(false);
+  const [assistantPos, setAssistantPos] = useState({ x: window.innerWidth - 420, y: window.innerHeight - 620 });
+  const dragRef = useRef(null);
+  const isDragging = useRef(false);
+  const dragStart = useRef({ mx:0, my:0, ox:0, oy:0 });
+
+  const onDragStart = (e) => {
+    isDragging.current = true;
+    dragStart.current = { mx:e.clientX, my:e.clientY, ox:assistantPos.x, oy:assistantPos.y };
+    const onMove = (ev) => {
+      if (!isDragging.current) return;
+      setAssistantPos({ x: dragStart.current.ox + ev.clientX - dragStart.current.mx, y: dragStart.current.oy + ev.clientY - dragStart.current.my });
+    };
+    const onUp = () => { isDragging.current = false; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
   const [syncMsg, setSyncMsg] = useState('');
 
   useEffect(() => {
@@ -724,5 +742,43 @@ export default function App() {
         </div>
       )}
     </div>
+
+      {/* Floating AI Assistant */}
+      <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999 }}>
+        {!assistantOpen && (
+          <button onClick={()=>setAssistantOpen(true)}
+            style={{ width:56, height:56, borderRadius:'50%', border:'none', background:'#0070F2', color:'#fff', cursor:'pointer', fontSize:24, boxShadow:'0 4px 20px rgba(0,112,242,0.4)', display:'flex', alignItems:'center', justifyContent:'center' }}
+            title="Open AI Assistant">
+            🤖
+          </button>
+        )}
+        {assistantOpen && (
+          <div style={{ position:'fixed', left:assistantPos.x, top:assistantPos.y, width:400, background:'#fff', borderRadius:16, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', border:'1px solid #e2e8f0', overflow:'hidden', zIndex:9999 }}>
+            <div onMouseDown={onDragStart}
+              style={{ padding:'10px 14px', background:'#0070F2', display:'flex', alignItems:'center', gap:8, cursor:'grab', userSelect:'none' }}>
+              <span style={{ fontSize:18 }}>🤖</span>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, fontSize:13, color:'#fff' }}>DeliverAI Assistant</div>
+                <div style={{ fontSize:10, color:'#bfdbfe' }}>Drag to move</div>
+              </div>
+              <button onClick={()=>setAssistantMinimized(m=>!m)}
+                style={{ background:'rgba(255,255,255,0.2)', border:'none', color:'#fff', cursor:'pointer', borderRadius:6, width:26, height:26, fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}
+                title={assistantMinimized?'Maximize':'Minimize'}>
+                {assistantMinimized ? '▲' : '▼'}
+              </button>
+              <button onClick={()=>{ setAssistantOpen(false); setAssistantMinimized(false); }}
+                style={{ background:'rgba(255,255,255,0.2)', border:'none', color:'#fff', cursor:'pointer', borderRadius:6, width:26, height:26, fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' }}
+                title="Close">
+                ×
+              </button>
+            </div>
+            {!assistantMinimized && (
+              <div style={{ height:500 }}>
+                <AIAssistant hideHeader={true} projects={projects} onClose={()=>setAssistantOpen(false)}/>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
   );
 }
