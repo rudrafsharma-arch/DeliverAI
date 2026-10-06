@@ -55,3 +55,14 @@ No markdown. No explanation. Just raw HTML.
 - Add this notice at top of document: AI-GENERATED DOCUMENT - Requires review and approval by qualified consultants before use
 - Never fabricate approval signatures or dates
 - Sign-off section must have blank fields only
+
+## EDITABLE FIELDS RULE
+- For ANY table with assignment, owner, date, status, or completion fields — use actual HTML input elements, not static placeholder text
+- Use this pattern for editable fields:
+  <input type="text" placeholder="assign" style="border:none;border-bottom:1px solid #ccc;width:120px;font-size:12px;background:transparent;font-family:inherit;">
+- For date fields use: <input type="date" style="border:none;border-bottom:1px solid #ccc;font-size:12px;background:transparent;">
+- For status dropdowns use: <select style="border:none;border-bottom:1px solid #ccc;font-size:12px;background:transparent;"><option>Open</option><option>In Progress</option><option>Closed</option></select>
+- NEVER use static text like "— assign —", "— to be completed —", "TBD", "___" as placeholders
+- Sign-off tables must have input fields for name, date, signature — not blank lines
+- Open issues tables must have editable assignee and target date fields
+- All documents must be interactive — reviewers can fill fields directly in the browser
