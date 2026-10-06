@@ -1,4 +1,4 @@
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+﻿require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const { spawn } = require('child_process');
@@ -346,19 +346,6 @@ app.get('/download/:projectId/:fileName', (req, res) => {
   res.download(filePath);
 });
 
-app.listen(MCP_PORT, () => {
-  console.log('\n╔══════════════════════════════════════════════╗');
-  console.log(`║  DeliverAI MCP Server        :${MCP_PORT}          ║`);
-  console.log(`║  Agents loaded: ${Object.keys(AGENTS).length}                           ║`);
-  console.log('║  SSE Streaming + Context Grounding           ║');
-  console.log('║  SAP Knowledge Base: enabled                 ║');
-  console.log('║  Human-in-the-loop: enabled                  ║');
-  console.log('║  AI Assistant: enabled                       ║');
-  console.log('╚══════════════════════════════════════════════╝\n');
-});
-
-// ── Orchestration Endpoint ────────────────────────────────────────────────────
-const Orchestrator = require('./orchestrator');
 
 app.get('/orchestrate', async (req, res) => {
   const { projectId, ...formData } = req.query;
@@ -501,3 +488,10 @@ Now analyse and deliver.`;
   req.on('close', () => { orch.killAll(); });
 });
 // ─────────────────────────────────────────────────────────────────────────────
+
+require("./analyse-route")(app, AGENTS);
+
+app.listen(MCP_PORT, () => {
+  console.log('DeliverAI MCP Server running on port ' + MCP_PORT);
+  console.log('Agents loaded: ' + Object.keys(AGENTS).length);
+});

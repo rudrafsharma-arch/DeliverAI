@@ -508,6 +508,7 @@ export default function App() {
   const [view, setView] = useState('agents');
   const [agents, setAgents] = useState([]);
   const [projects, setProjects] = useState([]);
+  const safeSetProjects = (data) => setProjects(Array.isArray(data) ? data : []);
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [phase, setPhase] = useState('all');
@@ -572,8 +573,8 @@ export default function App() {
   const [syncMsg, setSyncMsg] = useState('');
 
   useEffect(() => {
-    api.get('/api/agents').then(setAgents).catch(()=>{});
-    api.get('/api/projects').then(setProjects).catch(()=>{});
+    api.get(`/api/agents`).then(data => setAgents(Array.isArray(data) ? data : Object.values(data))).catch(()=>{});
+    api.get("/api/projects").then(safeSetProjects).catch(()=>{});
     api.get('/api/engines').then(setEngineInfo).catch(()=>{});
     api.get('/api/config').then(setConfig).catch(()=>{});
     api.get('/api/config/env').then(d => setEnvConfig(d.config||{})).catch(()=>{});
@@ -586,7 +587,7 @@ export default function App() {
   const filtered = phase==='all' ? agents : agents.filter(a=>a.phase===phase);
 
   const handleComplete = () => {
-    api.get('/api/projects').then(setProjects).catch(()=>{});
+    api.get("/api/projects").then(safeSetProjects).catch(()=>{});
     if (selectedProject) api.get('/api/projects/'+selectedProject.id).then(setSelectedProject).catch(()=>{});
   };
 
@@ -649,7 +650,7 @@ export default function App() {
               setSyncing(false);
               setSyncMsg(direction === 'push' ? 'Synced successfully' : 'Restored successfully');
               setTimeout(() => setSyncMsg(''), 3000);
-              if (direction === 'pull') api.get('/api/projects').then(setProjects).catch(()=>{});
+              if (direction === 'pull') api.get("/api/projects").then(safeSetProjects).catch(()=>{});
             } else {
               setSyncMsg(message);
             }
@@ -745,7 +746,7 @@ export default function App() {
                         {p==='all'?'All':p.charAt(0).toUpperCase()+p.slice(1)} ({p==='all'?agents.length:agents.filter(a=>a.phase===p).length})
                       </button>
                     ))}
-                    <button onClick={()=>api.post('/api/agents/reload').then(()=>api.get('/api/agents').then(setAgents))}
+                    <button onClick={()=>{ api.post(`/api/agents/reload`).then(()=>api.get(`/api/agents`).then(data=>setAgents(Array.isArray(data)?data:Object.values(data)))); }}
                       style={{ marginLeft:'auto', padding:'5px 10px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12, color:'#64748b' }}>
                       Reload Agents
                     </button>
