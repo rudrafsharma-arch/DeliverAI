@@ -25,8 +25,8 @@ class Orchestrator {
   // Run a single subagent
   async runSubagent(agentId, agentName, prompt, phase) {
     return new Promise((resolve, reject) => {
-      this.log(`🚀 Spawning subagent: ${agentName}`, 'subagent_start');
-      this.send('subagent_status', { agentId, agentName, status: 'running', phase });
+      this.log(`🚀 Spawning subagent: ${agentName || agentId}`, 'subagent_start');
+      this.send('subagent_status', { agentId, agentName: agentName || agentId, status: 'running', phase });
 
       const proc = spawn(
         this.gitBash,
