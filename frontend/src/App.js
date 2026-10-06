@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Settings from './Settings';
+import Activity from './Activity';
+import { startJob, getRunningCount, subscribe, unsubscribe } from './JobManager';
 
 const api = {
   get: (url) => fetch(url).then(r => r.json()),
@@ -178,7 +180,7 @@ function AgentCard({ agent, onSelect, envConfig, onConfigure }) {
   );
 }
 
-function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConfigure }) {
+function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConfigure, onStartJob }) {
   const [form, setForm] = useState({ preparedBy:'Vikram Sharma', version:'1.0' });
   const [step, setStep] = useState('form');
   const [preview, setPreview] = useState(null);
@@ -215,17 +217,11 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
 
   const handleGenerate = () => {
     if (!form.projectName || !form.processName) { setError('Fill in Project Name and Process Name.'); return; }
-    setStep('generating'); setError(null);
-    const params = new URLSearchParams({agentId:agent.id, projectId:project?.id||'', ...form});
-    const es = new EventSource('http://localhost:3002/generate-stream?' + params);
-    es.onmessage = (e) => {
-      const { type, data } = JSON.parse(e.data);
-      if (type==='status') setStatusMsg(data);
-      else if (type==='progress') setProgress(data);
-      else if (type==='complete') { es.close(); setResult(data); setStep('result'); if(onComplete) onComplete(data); }
-      else if (type==='error') { es.close(); setError(data); setStep('form'); }
-    };
-    es.onerror = () => { es.close(); setError('Connection lost.'); setStep('form'); };
+    if (!form.description) { setError('Please add a description.'); return; }
+    setError(null);
+    if (onStartJob) {
+      onStartJob(agent.id, agent.name, project?.id, form);
+    }
   };
 
   const downloadHTML = () => {
@@ -287,7 +283,7 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
             {error && <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'8px 12px', color:'#dc2626', fontSize:13, marginBottom:12 }}>{error}</div>}
             <div style={{ display:'flex', gap:8 }}>
               <button onClick={handlePreview} style={{ flex:1, padding:'10px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:13 }}>Preview Prompt</button>
-              <button onClick={handleGenerate} style={{ flex:2, padding:'10px', borderRadius:8, border:'none', background:BLUE, color:'#fff', cursor:'pointer', fontSize:13, fontWeight:700 }}>Generate with Claude Code CLI</button>
+              <button onClick={()=>{ handleGenerate(); setStep('generating'); }} style={{ flex:2, padding:'10px', borderRadius:8, border:'none', background:BLUE, color:'#fff', cursor:'pointer', fontSize:13, fontWeight:700 }}>Generate with Claude Code CLI</button>
             </div>
           </div>
         </div>
@@ -314,24 +310,21 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
             </div>
             <div style={{ display:'flex', gap:8 }}>
               <button onClick={()=>setStep('form')} style={{ padding:'10px 16px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:13 }}>Edit</button>
-              <button onClick={handleGenerate} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:BLUE, color:'#fff', cursor:'pointer', fontSize:13, fontWeight:700 }}>Generate</button>
+              <button onClick={()=>{ handleGenerate(); setStep('generating'); }} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:BLUE, color:'#fff', cursor:'pointer', fontSize:13, fontWeight:700 }}>Generate in Background</button>
             </div>
           </div>
         </div>
       )}
 
       {step === 'generating' && (
-        <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, padding:48, textAlign:'center' }}>
-          <div style={{ width:48, height:48, border:'4px solid #e2e8f0', borderTop:'4px solid '+BLUE, borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto 20px' }}/>
-          <div style={{ fontSize:17, fontWeight:700, marginBottom:6 }}>Generating {agent.name}...</div>
-          <div style={{ fontSize:13, color:BLUE, marginBottom:4, minHeight:20 }}>{statusMsg}</div>
-          <div style={{ fontSize:12, color:'#94a3b8', minHeight:18, marginBottom:20 }}>{progress}</div>
-          <div style={{ display:'inline-flex', flexDirection:'column', gap:6, textAlign:'left' }}>
-            {['SSE open — no timeout','Claude Code CLI running','SAP best practices applied','Assembling output'].map((m,i)=>(
-              <div key={i} style={{ fontSize:12, color:'#475569', background:'#f8fafc', borderRadius:6, padding:'6px 12px', border:'1px solid #e2e8f0' }}>{m}</div>
-            ))}
+        <div style={{ background:'#f0fdf4', border:'1px solid #86efac', borderRadius:12, padding:32, textAlign:'center' }}>
+          <div style={{ fontSize:32, marginBottom:12 }}>🚀</div>
+          <div style={{ fontSize:17, fontWeight:700, marginBottom:8, color:'#15803d' }}>Running in background</div>
+          <div style={{ fontSize:13, color:'#16a34a', marginBottom:16 }}>{agent.name} is generating. You can navigate freely.</div>
+          <div style={{ display:'flex', gap:8, justifyContent:'center' }}>
+            <button onClick={onBack} style={{ padding:'8px 16px', borderRadius:8, border:'none', background:BLUE, color:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>View Activity Dashboard</button>
+            <button onClick={()=>setStep('form')} style={{ padding:'8px 16px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:13 }}>Generate Another</button>
           </div>
-          <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
         </div>
       )}
 
@@ -381,6 +374,7 @@ export default function App() {
   const [engineInfo, setEngineInfo] = useState(null);
   const [config, setConfig] = useState({ app:{ name:'DeliverAI', tagline:'AI agents for every project phase' } });
   const [envConfig, setEnvConfig] = useState({});
+  const [runningCount, setRunningCount] = useState(0);
 
   useEffect(() => {
     api.get('/api/agents').then(setAgents).catch(()=>{});
@@ -388,6 +382,8 @@ export default function App() {
     api.get('/api/engines').then(setEngineInfo).catch(()=>{});
     api.get('/api/config').then(setConfig).catch(()=>{});
     api.get('/api/config/env').then(d => setEnvConfig(d.config||{})).catch(()=>{});
+    subscribe('app', () => setRunningCount(getRunningCount()));
+    return () => unsubscribe('app');
   }, []);
 
   const phases = ['all','discover','explore','realize','test','deploy','run'];
@@ -399,6 +395,7 @@ export default function App() {
   };
 
   const handleConfigure = () => { setView('settings'); setSelectedAgent(null); };
+  const handleStartJob = (agentId, agentName, projectId, formData) => { startJob(agentId, agentName, projectId, formData); setView('activity'); setSelectedAgent(null); };
 
   return (
     <div style={{ fontFamily:'Inter, Segoe UI, Arial, sans-serif', minHeight:'100vh', background:'#f1f5f9', color:'#0f172a', display:'flex', flexDirection:'column' }}>
@@ -412,10 +409,10 @@ export default function App() {
             </div>
           </div>
           <nav style={{ display:'flex', gap:2, marginLeft:8 }}>
-            {['agents','settings'].map(v=>(
+            {['agents','activity','settings'].map(v=>(
               <button key={v} onClick={()=>{ setView(v); setSelectedAgent(null); }}
                 style={{ background:view===v?'#e8f2ff':'none', color:view===v?BLUE:'#64748b', border:'none', borderRadius:6, padding:'5px 12px', fontSize:13, cursor:'pointer', fontWeight:view===v?600:400 }}>
-                {v==='agents'?'Agents':'Settings'}
+                {v==='agents'?'Agents':v==='activity'?'Activity'+(runningCount>0?' ('+runningCount+')':''):'Settings'}
               </button>
             ))}
           </nav>
@@ -430,7 +427,9 @@ export default function App() {
       </header>
 
       <div style={{ display:'flex', flex:1, maxWidth:1400, margin:'0 auto', width:'100%', padding:16, gap:14 }}>
-        {view === 'settings' ? (
+        {view === 'activity' ? (
+          <div style={{ flex:1 }}><Activity /></div>
+        ) : view === 'settings' ? (
           <div style={{ flex:1 }}><Settings /></div>
         ) : (
           <>
@@ -459,7 +458,7 @@ export default function App() {
             <main style={{ flex:1, minWidth:0 }}>
               {selectedAgent ? (
                 <GenerationPanel agent={selectedAgent} project={selectedProject} onBack={()=>setSelectedAgent(null)}
-                  onComplete={handleComplete} envConfig={envConfig} onConfigure={handleConfigure}/>
+                  onComplete={handleComplete} envConfig={envConfig} onConfigure={handleConfigure} onStartJob={handleStartJob}/>
               ) : (
                 <div>
                   <div style={{ display:'flex', gap:6, marginBottom:14, flexWrap:'wrap', alignItems:'center' }}>
