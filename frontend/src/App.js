@@ -24,7 +24,8 @@ function isConfigured(connectionId, envConfig) {
     joule:   ['JOULE_STUDIO_URL','JOULE_CLIENT_ID']
   };
   const keys = keyMap[connectionId] || [];
-  return keys.every(k => envConfig[k] && envConfig[k] !== '' && !envConfig[k].includes('your_'));
+  if (keys.length === 0) return false;
+  return keys.some(k => envConfig[k] && envConfig[k] !== '' && envConfig[k] !== '••••••••' && !envConfig[k].includes('your_') && !envConfig[k].includes('USERNAME'));
 }
 
 function ConnectionBadge({ connId, configured, onConfigure }) {
