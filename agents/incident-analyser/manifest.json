@@ -57,5 +57,20 @@
     "ams",
     "run",
     "support"
+  ],
+  "requiredConnections": [
+    "claude"
+  ],
+  "connectionDetails": [
+    {
+      "label": "Claude Code CLI",
+      "icon": "🤖",
+      "required": true,
+      "envKeys": [
+        "GIT_BASH_PATH",
+        "CLAUDE_PATH",
+        "AI_ENGINE"
+      ]
+    }
   ]
 }

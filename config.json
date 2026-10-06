@@ -1,23 +1,182 @@
 {
-  "app": { "name": "DeliverAI", "tagline": "AI agents for every project phase", "version": "1.0.0" },
-  "branding": { "primaryColor": "#0070F2", "logoText": "DeliverAI" },
-  "agents": { "autoDiscover": true, "repoPath": "agents/", "defaultModel": "claude-sonnet-4-6", "defaultMaxTokens": 8000, "timeout": 300000 },
-  "features": { "projectWorkspace": true, "contextGrounding": true, "agentChaining": true, "btpDeployment": true, "githubIntegration": true },
+  "app": {
+    "name": "DeliverAI",
+    "tagline": "AI agents for every project phase",
+    "version": "1.0.0"
+  },
+  "branding": {
+    "primaryColor": "#0070F2",
+    "logoText": "DeliverAI"
+  },
+  "agents": {
+    "autoDiscover": true,
+    "repoPath": "agents/",
+    "defaultModel": "claude-sonnet-4-6",
+    "defaultMaxTokens": 8000,
+    "timeout": 300000
+  },
+  "features": {
+    "projectWorkspace": true,
+    "contextGrounding": true,
+    "agentChaining": true,
+    "btpDeployment": true,
+    "githubIntegration": true
+  },
   "phases": [
-    { "id": "discover", "label": "Discover", "icon": "🔍", "color": "#1a5276" },
-    { "id": "explore",  "label": "Explore",  "icon": "🗺",  "color": "#1a5c1a" },
-    { "id": "realize",  "label": "Realize",  "icon": "🔨",  "color": "#7d6608" },
-    { "id": "test",     "label": "Test",     "icon": "🧪",  "color": "#7b241c" },
-    { "id": "deploy",   "label": "Deploy",   "icon": "🚀",  "color": "#6c3483" },
-    { "id": "run",      "label": "Run",      "icon": "▶️",   "color": "#1a4a8c" }
+    {
+      "id": "discover",
+      "label": "Discover",
+      "icon": "🔍",
+      "color": "#1a5276"
+    },
+    {
+      "id": "explore",
+      "label": "Explore",
+      "icon": "🗺",
+      "color": "#1a5c1a"
+    },
+    {
+      "id": "realize",
+      "label": "Realize",
+      "icon": "🔨",
+      "color": "#7d6608"
+    },
+    {
+      "id": "test",
+      "label": "Test",
+      "icon": "🧪",
+      "color": "#7b241c"
+    },
+    {
+      "id": "deploy",
+      "label": "Deploy",
+      "icon": "🚀",
+      "color": "#6c3483"
+    },
+    {
+      "id": "run",
+      "label": "Run",
+      "icon": "▶️",
+      "color": "#1a4a8c"
+    }
   ],
   "projectTypes": [
-    { "id": "s4hana",     "label": "SAP S/4HANA",    "icon": "🏢" },
-    { "id": "btp",        "label": "SAP BTP",         "icon": "☁️" },
-    { "id": "ecc",        "label": "SAP ECC",         "icon": "🏛" },
-    { "id": "oracle",     "label": "Oracle",          "icon": "🔶" },
-    { "id": "workday",    "label": "Workday",         "icon": "💼" },
-    { "id": "salesforce", "label": "Salesforce",      "icon": "☁️" },
-    { "id": "custom",     "label": "Custom / Other",  "icon": "⚙️" }
-  ]
+    {
+      "id": "s4hana",
+      "label": "SAP S/4HANA",
+      "icon": "🏢"
+    },
+    {
+      "id": "btp",
+      "label": "SAP BTP",
+      "icon": "☁️"
+    },
+    {
+      "id": "ecc",
+      "label": "SAP ECC",
+      "icon": "🏛"
+    },
+    {
+      "id": "oracle",
+      "label": "Oracle",
+      "icon": "🔶"
+    },
+    {
+      "id": "workday",
+      "label": "Workday",
+      "icon": "💼"
+    },
+    {
+      "id": "salesforce",
+      "label": "Salesforce",
+      "icon": "☁️"
+    },
+    {
+      "id": "custom",
+      "label": "Custom / Other",
+      "icon": "⚙️"
+    }
+  ],
+  "connections": {
+    "claude": {
+      "label": "Claude Code CLI",
+      "icon": "🤖",
+      "required": true,
+      "envKeys": [
+        "GIT_BASH_PATH",
+        "CLAUDE_PATH",
+        "AI_ENGINE"
+      ]
+    },
+    "btp": {
+      "label": "SAP BTP",
+      "icon": "☁️",
+      "required": false,
+      "envKeys": [
+        "BTP_TOKEN_URL",
+        "BTP_CLIENT_ID",
+        "BTP_CLIENT_SECRET",
+        "BTP_CPI_HOST"
+      ]
+    },
+    "s4": {
+      "label": "SAP S/4HANA",
+      "icon": "🏢",
+      "required": false,
+      "envKeys": [
+        "S4_HOST",
+        "S4_USERNAME",
+        "S4_PASSWORD"
+      ]
+    },
+    "github": {
+      "label": "GitHub",
+      "icon": "🐙",
+      "required": false,
+      "envKeys": [
+        "GITHUB_TOKEN",
+        "GITHUB_USER"
+      ]
+    },
+    "aicore": {
+      "label": "SAP AI Core",
+      "icon": "🧠",
+      "required": false,
+      "envKeys": [
+        "AICORE_TOKEN_URL",
+        "AICORE_CLIENT_ID",
+        "AICORE_CLIENT_SECRET"
+      ]
+    },
+    "hana": {
+      "label": "HANA Cloud",
+      "icon": "🗄️",
+      "required": false,
+      "envKeys": [
+        "HANA_HOST",
+        "HANA_USER",
+        "HANA_PASSWORD"
+      ]
+    },
+    "snow": {
+      "label": "ServiceNow",
+      "icon": "🎫",
+      "required": false,
+      "envKeys": [
+        "SNOW_INSTANCE",
+        "SNOW_USERNAME",
+        "SNOW_PASSWORD"
+      ]
+    },
+    "joule": {
+      "label": "Joule Studio",
+      "icon": "💬",
+      "required": false,
+      "envKeys": [
+        "JOULE_STUDIO_URL",
+        "JOULE_CLIENT_ID",
+        "JOULE_CLIENT_SECRET"
+      ]
+    }
+  }
 }

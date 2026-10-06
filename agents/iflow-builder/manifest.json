@@ -64,5 +64,32 @@
     "cpi",
     "development",
     "realize"
+  ],
+  "requiredConnections": [
+    "claude",
+    "btp"
+  ],
+  "connectionDetails": [
+    {
+      "label": "Claude Code CLI",
+      "icon": "🤖",
+      "required": true,
+      "envKeys": [
+        "GIT_BASH_PATH",
+        "CLAUDE_PATH",
+        "AI_ENGINE"
+      ]
+    },
+    {
+      "label": "SAP BTP",
+      "icon": "☁️",
+      "required": false,
+      "envKeys": [
+        "BTP_TOKEN_URL",
+        "BTP_CLIENT_ID",
+        "BTP_CLIENT_SECRET",
+        "BTP_CPI_HOST"
+      ]
+    }
   ]
 }
