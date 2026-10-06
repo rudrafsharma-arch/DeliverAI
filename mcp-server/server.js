@@ -305,51 +305,41 @@ app.get('/generate-stream', (req, res) => {
 });
 
 // AI Assistant
-app.get('/assistant-stream', (req, res) => {
-  const { message, projectId } = req.query;
+app.get('/assistant-stream', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.flushHeaders();
+  const send = (type, data) => res.write('data: ' + JSON.stringify({type,data}) + '\n\n');
+  const message = req.query.message || '';
+  if (!message) { send('error', 'No message'); res.end(); return; }
 
-  const send = (type, data) => { if (!res.writableEnded) res.write(`data: ${JSON.stringify({ type, data })}\n\n`); };
-  const agentList = Object.values(AGENTS).map(a => `- ${a.name} (${a.id}): ${a.description}`).join('\n');
-  let projectContext = '';
-  if (projectId) {
-    const project = loadProject(projectId);
-    if (project) projectContext = `Current Project: ${project.name} (${project.type})\nClient: ${project.client}\nDocuments: ${(project.documents||[]).map(d=>d.agentName).join(', ')}`;
-  }
+  const systemPrompt = 'You are DeliverAI Assistant, an expert SAP delivery consultant. Give concise, practical answers. Use bullet points. Keep responses under 200 words unless detail is needed.';
+  const fullPrompt = systemPrompt + '\n\nUser: ' + message + '\n\nAssistant:';
+  
+  const gitBash = process.env.GIT_BASH_PATH;
+  const claudePath = process.env.CLAUDE_PATH;
+  if (!gitBash || !claudePath) { send('error', 'Claude not configured'); res.end(); return; }
 
-  const assistantPrompt = `You are the DeliverAI AI Assistant — an expert SAP and project delivery consultant.
-
-Available Agents:
-${agentList}
-
-${projectContext}
-
-Guidelines:
-- Guide users on which agents to use and when
-- Answer SAP, BTP, RAP, ABAP, integration, CAP questions with best practices
-- Recommend RESTful ABAP (RAP) for all new S/4HANA development
-- Explain generated documents and what to check
-- Suggest next steps based on project progress
-- Be concise, practical, and actionable
-- Use SAP Activate methodology as the framework
-
-User: ${message}
-
-Respond in plain text. Be helpful, direct, and specific.`;
-
-  const child = runClaude(assistantPrompt, res, (output) => {
-    send('complete', { message: output.trim() });
+  const { spawn } = require('child_process');
+  const proc = spawn(gitBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], { env: { ...process.env, HOME: process.env.HOME || process.env.USERPROFILE } });
+  
+  proc.stdin.write(fullPrompt);
+  proc.stdin.end();
+  
+  let output = '';
+  proc.stdout.on('data', d => { output += d.toString(); });
+  proc.stderr.on('data', () => {});
+  proc.on('close', () => {
+    const clean = output.replace(/^(Human|Assistant):.*/gm, '').trim();
+    send('complete', clean || 'No response');
     res.end();
   });
-
-  req.on('close', () => { try { child.kill(); } catch(e) {} });
+  
+  setTimeout(() => { try { proc.kill(); send('complete', output.trim() || 'Timeout'); res.end(); } catch(e){} }, 60000);
 });
 
-// Download
 app.get('/download/:projectId/:fileName', (req, res) => {
   const filePath = path.join(getProjectDir(req.params.projectId), req.params.fileName);
   if (!fs.existsSync(filePath)) return res.status(404).json({ error:'File not found' });

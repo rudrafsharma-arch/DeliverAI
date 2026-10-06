@@ -42,45 +42,24 @@ export default function AIAssistant({ onClose }) {
     setLoading(true);
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
-          system: SYSTEM_PROMPT,
-          messages: [
-            ...messages.filter(m => m.role !== 'assistant' || messages.indexOf(m) > 0).map(m => ({ role: m.role, content: m.content })),
-            { role: 'user', content: userMsg }
-          ]
-        })
-      });
-
-      const data = await response.json();
-      const reply = data.content?.[0]?.text || 'Sorry I could not get a response.';
-      setMessages(m => [...m, { role: 'assistant', content: reply }]);
+      const params = new URLSearchParams({ message: userMsg });
+      const es = new EventSource('http://localhost:3002/assistant-stream?' + params);
+      let reply = '';
+      es.onmessage = (ev) => {
+        const { type, data } = JSON.parse(ev.data);
+        if (type === 'chunk') reply += data;
+        else if (type === 'complete') {
+          es.close();
+          setMessages(m => [...m, { role: 'assistant', content: reply || data }]);
+          setLoading(false);
+          setError(null);
+        } else if (type === 'error') { es.close(); setError(data); setLoading(false); }
+      };
+      es.onerror = () => { es.close(); setLoading(false); setError('Connection lost'); };
     } catch(e) {
-      setError('Could not connect. Falling back to CLI assistant.');
-      // Fallback to MCP assistant
-      try {
-        const params = new URLSearchParams({ message: userMsg });
-        const es = new EventSource('http://localhost:3002/assistant-stream?' + params);
-        let reply = '';
-        es.onmessage = (ev) => {
-          const { type, data } = JSON.parse(ev.data);
-          if (type === 'chunk') reply += data;
-          else if (type === 'complete') {
-            es.close();
-            setMessages(m => [...m, { role: 'assistant', content: reply || data }]);
-            setLoading(false);
-            setError(null);
-          } else if (type === 'error') { es.close(); setError(data); setLoading(false); }
-        };
-        es.onerror = () => { es.close(); setLoading(false); };
-        return;
-      } catch(e2) { setError(e2.message); }
+      setError(e.message);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const quickQuestions = [
