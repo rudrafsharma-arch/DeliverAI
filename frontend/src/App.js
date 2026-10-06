@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import Settings from './Settings';
 import AIAssistant from './AIAssistant';
 import Activity from './Activity';
@@ -26,11 +26,11 @@ function isConfigured(connectionId, envConfig) {
   };
   const keys = keyMap[connectionId] || [];
   if (keys.length === 0) return false;
-  if(connectionId==="claude") return true; return keys.some(k => envConfig[k] && envConfig[k] !== '' && envConfig[k] !== '••••••••' && !envConfig[k].includes('your_') && !envConfig[k].includes('USERNAME'));
+  if(connectionId==="claude") return true; return keys.some(k => envConfig[k] && envConfig[k] !== '' && envConfig[k] !== 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢' && !envConfig[k].includes('your_') && !envConfig[k].includes('USERNAME'));
 }
 
 function ConnectionBadge({ connId, configured, onConfigure }) {
-  const icons = { claude:'🤖', btp:'☁️', s4:'🏢', github:'🐙', aicore:'🧠', hana:'🗄️', snow:'🎫', joule:'💬' };
+  const icons = { claude:'ðŸ¤–', btp:'â˜ï¸', s4:'ðŸ¢', github:'ðŸ™', aicore:'ðŸ§ ', hana:'ðŸ—„ï¸', snow:'ðŸŽ«', joule:'ðŸ’¬' };
   return (
     <span onClick={() => !configured && onConfigure(connId)}
       title={connId + (configured ? ' configured' : ' not configured - click to configure')}
@@ -38,7 +38,7 @@ function ConnectionBadge({ connId, configured, onConfigure }) {
         background: configured ? '#f0fdf4' : '#fef2f2',
         color: configured ? '#16a34a' : '#dc2626',
         border: '1px solid ' + (configured ? '#86efac' : '#fecaca') }}>
-      <span>{icons[connId] || '🔗'}</span>
+      <span>{icons[connId] || 'ðŸ”—'}</span>
       <span>{configured ? 'OK' : 'Setup'}</span>
     </span>
   );
@@ -71,7 +71,7 @@ function Assistant({ projectId, onClose }) {
     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, display:'flex', flexDirection:'column', height:400 }}>
       <div style={{ padding:'10px 14px', borderBottom:'1px solid #e2e8f0', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-          <span>🤖</span>
+          <span>ðŸ¤–</span>
           <span style={{ fontWeight:600, fontSize:13 }}>AI Assistant</span>
           <span style={{ fontSize:9, background:'#e8f2ff', color:BLUE, padding:'2px 6px', borderRadius:8, fontWeight:600 }}>SAP Expert</span>
         </div>
@@ -91,7 +91,7 @@ function Assistant({ projectId, onClose }) {
         <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()}
           placeholder="Ask about SAP, agents, or your project..."
           style={{ flex:1, border:'1px solid #e2e8f0', borderRadius:8, padding:'7px 10px', fontSize:12, outline:'none', fontFamily:'inherit' }}/>
-        <button onClick={send} style={{ padding:'7px 12px', borderRadius:8, border:'none', background:BLUE, color:'#fff', cursor:'pointer' }}>→</button>
+        <button onClick={send} style={{ padding:'7px 12px', borderRadius:8, border:'none', background:BLUE, color:'#fff', cursor:'pointer' }}>â†’</button>
       </div>
     </div>
   );
@@ -143,7 +143,7 @@ function ProjectPanel({ projects, selected, onSelect, onCreate }) {
           <button key={p.id} onClick={()=>onSelect(p)}
             style={{ width:'100%', textAlign:'left', padding:'9px 14px', background:selected?.id===p.id?'#e8f2ff':'none', border:'none', borderBottom:'1px solid #f1f5f9', cursor:'pointer' }}>
             <div style={{ fontWeight:500, fontSize:13, color:selected?.id===p.id?BLUE:'#1e293b' }}>{p.name}</div>
-            <div style={{ fontSize:11, color:'#94a3b8' }}>{p.client||'No client'} · {(p.documents||[]).length} docs</div>
+            <div style={{ fontSize:11, color:'#94a3b8' }}>{p.client||'No client'} Â· {(p.documents||[]).length} docs</div>
           </button>
         ))}
       </div>
@@ -161,7 +161,7 @@ function AgentCard({ agent, onSelect, envConfig, onConfigure }) {
   return (
     <div style={{ background:'#fff', border:'1.5px solid ' + (allOk ? '#e2e8f0' : '#fde68a'), borderRadius:12, padding:'14px 15px', display:'flex', flexDirection:'column' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:7 }}>
-        <span style={{ fontSize:26 }}>{agent.icon||'📄'}</span>
+        <span style={{ fontSize:26 }}>{agent.icon||'ðŸ“„'}</span>
         <span style={{ fontSize:9, padding:'2px 6px', borderRadius:8, fontWeight:600, background:bg, color }}>{agent.phase}</span>
       </div>
       <div style={{ fontWeight:600, fontSize:13, color:'#1e293b', marginBottom:3 }}>{agent.name}</div>
@@ -306,10 +306,10 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
       <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden', marginBottom:12 }}>
         <button onClick={()=>setShowContext(s=>!s)}
           style={{ width:'100%', padding:'10px 14px', border:'none', background:'none', cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:8, fontSize:13, fontWeight:600 }}>
-          <span>📎</span>
+          <span>ðŸ“Ž</span>
           <span>Add Context (optional)</span>
-          <span style={{ fontSize:11, color:'#94a3b8', fontWeight:400 }}>— upload docs, paste transcript, or select from project</span>
-          <span style={{ marginLeft:'auto', fontSize:12, color:'#94a3b8' }}>{showContext ? '▲' : '▼'}</span>
+          <span style={{ fontSize:11, color:'#94a3b8', fontWeight:400 }}>â€” upload docs, paste transcript, or select from project</span>
+          <span style={{ marginLeft:'auto', fontSize:12, color:'#94a3b8' }}>{showContext ? 'â–²' : 'â–¼'}</span>
         </button>
         {showContext && (
           <div style={{ padding:'0 14px 14px', borderTop:'1px solid #f1f5f9' }}>
@@ -323,7 +323,7 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
                       else setContextDocs(d => d.filter(x => x.fileName !== doc.fileName));
                     }}/>
                     <span>{doc.agentName}</span>
-                    <span style={{ color:'#94a3b8', fontSize:11 }}>v{doc.version} · {new Date(doc.generatedAt).toLocaleDateString()}</span>
+                    <span style={{ color:'#94a3b8', fontSize:11 }}>v{doc.version} Â· {new Date(doc.generatedAt).toLocaleDateString()}</span>
                   </label>
                 ))}
               </div>
@@ -342,7 +342,7 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
             </div>
             {(contextText || contextDocs.length > 0 || uploadedFile) && (
               <div style={{ marginTop:6, fontSize:11, color:'#16a34a', fontWeight:600 }}>
-                Context ready — Claude will use this when generating the document
+                Context ready â€” Claude will use this when generating the document
               </div>
             )}
           </div>
@@ -351,8 +351,8 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
 
       {agent.sourceJob && (
         <div style={{ background:'#e8f2ff', border:'1px solid #bfdbfe', borderRadius:10, padding:'10px 14px', marginBottom:12, fontSize:12, color:'#1e40af', display:'flex', alignItems:'center', gap:8 }}>
-          <span>🔗</span>
-          <span>Chained from <strong>{agent.sourceJob.agentName}</strong> — context pre-filled automatically</span>
+          <span>ðŸ”—</span>
+          <span>Chained from <strong>{agent.sourceJob.agentName}</strong> â€” context pre-filled automatically</span>
         </div>
       )}
       {missing.length > 0 && (
@@ -403,7 +403,7 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
       {step === 'preview' && preview && (
         <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12 }}>
           <div style={{ padding:'12px 16px', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'space-between' }}>
-            <span style={{ fontWeight:600, fontSize:13 }}>Preview — Human in the Loop</span>
+            <span style={{ fontWeight:600, fontSize:13 }}>Preview â€” Human in the Loop</span>
             <span style={{ fontSize:11, color:'#94a3b8' }}>Review before generating</span>
           </div>
           <div style={{ padding:16 }}>
@@ -429,7 +429,7 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
 
       {step === 'generating' && (
         <div style={{ background:'#f0fdf4', border:'1px solid #86efac', borderRadius:12, padding:32, textAlign:'center' }}>
-          <div style={{ fontSize:32, marginBottom:12 }}>🚀</div>
+          <div style={{ fontSize:32, marginBottom:12 }}>ðŸš€</div>
           <div style={{ fontSize:17, fontWeight:700, marginBottom:8, color:'#15803d' }}>Running in background</div>
           <div style={{ fontSize:13, color:'#16a34a', marginBottom:16 }}>{agent.name} is generating. You can navigate freely.</div>
           <div style={{ display:'flex', gap:8, justifyContent:'center' }}>
@@ -485,7 +485,7 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
                 <span style={{ fontSize:11, color:'#16a34a' }}>Document refined successfully</span>
                 <button onClick={()=>{ setResult(originalResult); setOriginalResult(null); }}
                   style={{ fontSize:11, padding:'2px 8px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', color:'#64748b' }}>
-                  Undo — restore original
+                  Undo â€” restore original
                 </button>
               </div>
             )}
@@ -518,7 +518,7 @@ export default function App() {
   const [syncing, setSyncing] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantMinimized, setAssistantMinimized] = useState(false);
-  const [assistantPos, setAssistantPos] = useState({ x: window.innerWidth - 420, y: window.innerHeight - 620 });
+  const [assistantPos, setAssistantPos] = useState({ x: window.innerWidth - 420, y: 70 });
   const dragRef = useRef(null);
   const isDragging = useRef(false);
   const dragStart = useRef({ mx:0, my:0, ox:0, oy:0 });
@@ -651,14 +651,14 @@ export default function App() {
             {syncMsg && <span style={{ fontSize:10, color:syncing?'#0070F2':'#16a34a', padding:'2px 8px', borderRadius:10, background:syncing?'#e8f2ff':'#f0fdf4', border:'1px solid', borderColor:syncing?'#bfdbfe':'#86efac' }}>{syncMsg}</span>}
             <button onClick={()=>handleSync('pull')} disabled={syncing} title="Restore from private repo"
               style={{ padding:'6px 10px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:11, color:'#64748b' }}>
-              {syncing ? '...' : '⬇ Sync'}
+              {syncing ? '...' : 'â¬‡ Sync'}
             </button>
             <button onClick={()=>handleSync('push')} disabled={syncing} title="Save & sync to private repo"
               style={{ padding:'6px 10px', borderRadius:8, border:'none', background:'#0070F2', cursor:'pointer', fontSize:11, color:'#fff', fontWeight:600 }}>
-              {syncing ? '...' : '⬆ Save & Sync'}
+              {syncing ? '...' : 'â¬† Save & Sync'}
             </button>
-            <button onClick={()=>setShowAssistant(s=>!s)}
-              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:showAssistant?'#e8f2ff':'#fff', color:showAssistant?BLUE:'#475569', cursor:'pointer', fontSize:12 }}>
+            <button onClick={()=>setAssistantOpen(s=>!s)}
+              style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'#0070F2', color:'#fff'}}>
               AI Assistant
             </button>
           </div>
@@ -684,7 +684,7 @@ export default function App() {
                       : (selectedProject.documents||[]).map((d,i)=>(
                         <div key={i} style={{ padding:'7px 12px', borderBottom:'1px solid #f1f5f9' }}>
                           <div style={{ fontWeight:500, fontSize:12 }}>{d.agentName}</div>
-                          <div style={{ fontSize:10, color:'#94a3b8' }}>v{d.version} · {new Date(d.generatedAt).toLocaleDateString()}</div>
+                          <div style={{ fontSize:10, color:'#94a3b8' }}>v{d.version} Â· {new Date(d.generatedAt).toLocaleDateString()}</div>
                         </div>
                       ))
                     }
@@ -714,7 +714,7 @@ export default function App() {
                   </div>
                   {filtered.length===0 ? (
                     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, padding:48, textAlign:'center', color:'#94a3b8' }}>
-                      <div style={{ fontSize:32, marginBottom:10 }}>🤖</div>
+                      <div style={{ fontSize:32, marginBottom:10 }}>ðŸ¤–</div>
                       <div style={{ fontSize:14 }}>No agents for this phase</div>
                     </div>
                   ) : (
@@ -725,24 +725,14 @@ export default function App() {
                     </div>
                   )}
                 </div>
-              )}
-            </main>
-          </>
         )}
+               )
+             </main>
+           </>
+         )}
       </div>
-      {showAssistant && (
-        <div style={{ position:'fixed', right:16, bottom:16, width:400, zIndex:1000, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', borderRadius:12, overflow:'hidden' }}>
-          <div style={{ display:'flex', alignItems:'center', padding:'10px 14px', background:'#0070F2', cursor:'pointer' }} onClick={()=>setAssistantMinimized(m=>!m)}>
-            <span style={{ fontSize:13, color:'#fff', fontWeight:700, flex:1 }}>🤖 DeliverAI Assistant</span>
-            <button onClick={e=>{e.stopPropagation();setAssistantMinimized(m=>!m)}} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:14 }}>{assistantMinimized?'+':'-'}</button>
-            <button onClick={e=>{e.stopPropagation();setShowAssistant(false)}} style={{ background:'none', border:'none', color:'#fff', cursor:'pointer', fontSize:16, marginLeft:4 }}>×</button>
-          </div>
-          {!assistantMinimized && <div style={{ height:520 }}><AIAssistant projects={projects} hideHeader={true}/></div>}
-        </div>
-      )}
-    </div>
 
-      {/* Floating AI Assistant */}
+      {/* Floating AI Assistant - draggable */}
       <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999 }}>
         {!assistantOpen && (
           <button onClick={()=>setAssistantOpen(true)}
@@ -772,12 +762,13 @@ export default function App() {
               </button>
             </div>
             {!assistantMinimized && (
-              <div style={{ height:500 }}>
+              <div style={{ height:460 }}>
                 <AIAssistant hideHeader={true} projects={projects} onClose={()=>setAssistantOpen(false)}/>
               </div>
             )}
           </div>
         )}
       </div>
+    </div>
   );
 }
