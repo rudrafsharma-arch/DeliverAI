@@ -6,9 +6,15 @@
   "phase": "run",
   "category": "ams",
   "projectTypes": [
-    "s4hana",
+    "s4hana-public",
+    "s4hana-private",
+    "s4hana-onprem",
     "ecc",
-    "btp"
+    "btp",
+    "oracle",
+    "workday",
+    "salesforce",
+    "custom"
   ],
   "icon": "🚨",
   "color": "#7b241c",

@@ -62,39 +62,58 @@
   ],
   "projectTypes": [
     {
-      "id": "s4hana",
-      "label": "SAP S/4HANA",
-      "icon": "🏢"
+      "id": "s4hana-public",
+      "label": "SAP S/4HANA Public Cloud",
+      "icon": "☁️",
+      "description": "True SaaS, no custom ABAP, BTP extensions only"
     },
     {
-      "id": "btp",
-      "label": "SAP BTP",
-      "icon": "☁️"
+      "id": "s4hana-private",
+      "label": "SAP S/4HANA Private Cloud (PCE)",
+      "icon": "🏢",
+      "description": "Hyperscaler hosted, full ABAP, own transport landscape"
+    },
+    {
+      "id": "s4hana-onprem",
+      "label": "SAP S/4HANA On-Premise",
+      "icon": "🖥️",
+      "description": "On-premise, full ABAP, classic transport"
     },
     {
       "id": "ecc",
       "label": "SAP ECC",
-      "icon": "🏛"
+      "icon": "🏛️",
+      "description": "Legacy ECC, classic ABAP only"
+    },
+    {
+      "id": "btp",
+      "label": "SAP BTP",
+      "icon": "☁️",
+      "description": "Business Technology Platform"
     },
     {
       "id": "oracle",
       "label": "Oracle",
-      "icon": "🔶"
+      "icon": "🔶",
+      "description": "Oracle ERP"
     },
     {
       "id": "workday",
       "label": "Workday",
-      "icon": "💼"
+      "icon": "💼",
+      "description": "Workday HCM/Finance"
     },
     {
       "id": "salesforce",
       "label": "Salesforce",
-      "icon": "☁️"
+      "icon": "🌊",
+      "description": "Salesforce CRM/Platform"
     },
     {
       "id": "custom",
       "label": "Custom / Other",
-      "icon": "⚙️"
+      "icon": "⚙️",
+      "description": "Any other platform"
     }
   ],
   "connections": {

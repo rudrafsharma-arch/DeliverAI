@@ -6,8 +6,15 @@
   "phase": "realize",
   "category": "development",
   "projectTypes": [
+    "s4hana-public",
+    "s4hana-private",
+    "s4hana-onprem",
+    "ecc",
     "btp",
-    "s4hana"
+    "oracle",
+    "workday",
+    "salesforce",
+    "custom"
   ],
   "icon": "☁️",
   "color": "#0891B2",

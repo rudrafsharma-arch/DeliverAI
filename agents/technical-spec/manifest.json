@@ -6,7 +6,9 @@
   "phase": "realize",
   "category": "documentation",
   "projectTypes": [
-    "s4hana",
+    "s4hana-public",
+    "s4hana-private",
+    "s4hana-onprem",
     "ecc",
     "btp",
     "oracle",
