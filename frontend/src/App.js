@@ -94,6 +94,12 @@ function Assistant({ projectId, onClose }) {
         <button onClick={send} style={{ padding:'7px 12px', borderRadius:8, border:'none', background:BLUE, color:'#fff', cursor:'pointer' }}>→</button>
       </div>
     </div>
+      {showAssistant && (
+        <div style={{ position:'fixed', right:16, bottom:16, width:400, height:580, zIndex:1000, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', borderRadius:12 }}>
+          <AIAssistant onClose={()=>setShowAssistant(false)} projects={projects} />
+        </div>
+      )}
+    </div>
   );
 }
 
