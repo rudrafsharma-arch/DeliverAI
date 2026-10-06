@@ -90,6 +90,9 @@ export default function Orchestrator({ projects, onClose }) {
       else if (type === 'status') {
         addMessage({ role: 'system', text: data, time: new Date().toLocaleTimeString() });
       }
+      else if (type === 'heartbeat' || type === 'keepalive') {
+        addMessage({ role: 'heartbeat', text: data.message, time: new Date().toLocaleTimeString() });
+      }
     };
 
     es.onerror = () => {
@@ -221,12 +224,12 @@ export default function Orchestrator({ projects, onClose }) {
             )}
             {messages.map(msg => (
               <div key={msg.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: msg.role === 'architect' ? '#1e40af' : msg.role === 'error' ? '#ef4444' : msg.role === 'system' ? '#64748b' : '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, color: '#fff', fontWeight: 700 }}>
-                  {msg.role === 'architect' ? '🏗️' : msg.role === 'error' ? '❌' : msg.role === 'system' ? '⚙️' : '🤖'}
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: msg.role === 'architect' ? '#1e40af' : msg.role === 'error' ? '#ef4444' : msg.role === 'system' ? '#64748b' : msg.role === 'heartbeat' ? '#f59e0b' : '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0, color: '#fff', fontWeight: 700 }}>
+                  {msg.role === 'architect' ? '🏗️' : msg.role === 'error' ? '❌' : msg.role === 'system' ? '⚙️' : msg.role === 'heartbeat' ? '💓' : '🤖'}
                 </div>
                 <div style={{ flex: 1, background: '#fff', borderRadius: 10, padding: '10px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                   <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4, fontWeight: 600 }}>
-                    {msg.role === 'architect' ? 'Solution Architect' : msg.role === 'system' ? 'System' : msg.role === 'error' ? 'Error' : msg.role} · {msg.time}
+                    {msg.role === 'architect' ? 'Solution Architect' : msg.role === 'system' ? 'System' : msg.role === 'error' ? 'Error' : msg.role === 'heartbeat' ? 'Live Update' : msg.role} · {msg.time}
                   </div>
                   <div style={{ fontSize: 13, color: '#1e293b', lineHeight: 1.5 }}>{msg.text}</div>
                 </div>

@@ -36,16 +36,34 @@ class Orchestrator {
 
       this.runningAgents[agentId] = proc;
 
+      // Keepalive — sends status every 60 seconds so UI doesn't think it's stuck
+      const keepalive = setInterval(() => {
+        if (this.runningAgents[agentId]) {
+          this.send('keepalive', { agentId, agentName, message: `${agentName} is working... Claude is generating content` });
+        } else {
+          clearInterval(keepalive);
+        }
+      }, 60000);
+
+      proc.on('close', () => clearInterval(keepalive));
+
       proc.stdin.write(prompt);
       proc.stdin.end();
 
       let output = '';
       let errorOutput = '';
 
+      let lastHeartbeat = Date.now();
       proc.stdout.on('data', d => {
-        output += d.toString();
-        // Stream progress to UI
-        this.send('subagent_progress', { agentId, agentName, chunk: d.toString() });
+        const chunk = d.toString();
+        output += chunk;
+        // Stream live chunks to UI
+        this.send('subagent_progress', { agentId, agentName, chunk });
+        // Send heartbeat every 30 seconds so UI knows it's alive
+        if (Date.now() - lastHeartbeat > 30000) {
+          lastHeartbeat = Date.now();
+          this.send('heartbeat', { agentId, agentName, message: `${agentName} still working... ${Math.round(output.length/1000)}kb generated so far` });
+        }
       });
 
       proc.stderr.on('data', d => { errorOutput += d.toString(); });
