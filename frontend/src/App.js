@@ -674,7 +674,7 @@ export default function App() {
                   </div>
                 </div>
               )}
-              {showAssistant && <Assistant projectId={selectedProject?.id} onClose={()=>setShowAssistant(false)}/>}
+              
             </aside>
 
             <main style={{ flex:1, minWidth:0 }}>
