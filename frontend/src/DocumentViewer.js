@@ -139,7 +139,26 @@ export default function DocumentViewer({ job, onClose }) {
           <span style={{ fontSize:11, color:'#94a3b8', marginLeft:5 }}>{job.result?.fileName}</span>
           {refined && <span style={{ fontSize:10, background:'#e8f2ff', color:BLUE, padding:'1px 6px', borderRadius:6, marginLeft:'auto', fontWeight:600 }}>REFINED</span>}
         </div>
-        <iframe srcDoc={currentHtml} style={{ display:'block', width:'100%', height:600, border:'none' }} title="Document Preview"/>
+        <iframe 
+    srcDoc={currentHtml} 
+    style={{ display:'block', width:'100%', height:600, border:'none' }} 
+    title="Document Preview"
+    onLoad={(e) => {
+      try {
+        const doc = e.target.contentDocument;
+        doc.querySelectorAll('a[href^="#"]').forEach(a => {
+          a.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            const target = doc.querySelector(a.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth' });
+          });
+        });
+        doc.querySelectorAll('a:not([href^="#"])').forEach(a => {
+          a.setAttribute('target', '_blank');
+        });
+      } catch(e) {}
+    }}
+  />
       </div>
     </div>
   );
