@@ -63,6 +63,14 @@ export function cancelJob(jobId) { if (jobs[jobId] && jobs[jobId].cancel) jobs[j
 export function clearJob(jobId) { delete jobs[jobId]; notifyListeners(); }
 export function clearCompleted() { Object.keys(jobs).forEach(id => { if (jobs[id].status !== 'running') delete jobs[id]; }); notifyListeners(); }
 
+export function updateApproval(jobId, status, approvers, comments) {
+  jobs[jobId].approvalStatus = status;
+  jobs[jobId].approvers = approvers || [];
+  jobs[jobId].comments = comments || [];
+  saveJobs(jobs);
+  notifyListeners();
+}
+
 export function importJob(job) {
   if (jobs[job.jobId]) return; // already exists
   jobs[job.jobId] = job;

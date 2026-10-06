@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getJobs, cancelJob, clearJob, clearCompleted, subscribe, unsubscribe } from './JobManager';
+import { getJobs, cancelJob, clearJob, clearCompleted, subscribe, unsubscribe, updateApproval } from './JobManager';
 import DocumentViewer from './DocumentViewer';
 
 

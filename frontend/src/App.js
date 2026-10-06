@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Settings from './Settings';
 import Activity from './Activity';
-import { startJob, getRunningCount, subscribe, unsubscribe, importJob } from './JobManager';
+import { startJob, getRunningCount, subscribe, unsubscribe, importJob, updateApproval } from './JobManager';
 
 const api = {
   get: (url) => fetch(url).then(r => r.json()),
@@ -25,7 +25,7 @@ function isConfigured(connectionId, envConfig) {
   };
   const keys = keyMap[connectionId] || [];
   if (keys.length === 0) return false;
-  return keys.some(k => envConfig[k] && envConfig[k] !== '' && envConfig[k] !== '••••••••' && !envConfig[k].includes('your_') && !envConfig[k].includes('USERNAME'));
+  if(connectionId==="claude") return true; return keys.some(k => envConfig[k] && envConfig[k] !== '' && envConfig[k] !== '••••••••' && !envConfig[k].includes('your_') && !envConfig[k].includes('USERNAME'));
 }
 
 function ConnectionBadge({ connId, configured, onConfigure }) {
