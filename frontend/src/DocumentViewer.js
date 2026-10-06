@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { startRefineJob, subscribe, unsubscribe, getJobs } from './JobManager';
 import ApprovalWorkflow from './ApprovalWorkflow';
 
 
@@ -28,41 +29,38 @@ export default function DocumentViewer({ job, onClose }) {
     w.print();
   };
 
+  const [refineJobId, setRefineJobId] = useState(null);
+
+  useEffect(() => {
+    subscribe('viewer-refine', (jobs) => {
+      if (!refineJobId) return;
+      const job2 = jobs.find(j => j.jobId === refineJobId);
+      if (!job2) return;
+      if (job2.status === 'completed' && job2.result?.html) {
+        setCurrentHtml(job2.result.html);
+        setRefining(false);
+        setRefined(true);
+        setRefineJobId(null);
+      } else if (job2.status === 'failed') {
+        setError('Refinement failed: ' + job2.error);
+        setRefining(false);
+        setRefineJobId(null);
+      }
+    });
+    return () => unsubscribe('viewer-refine');
+  }, [refineJobId]);
+
   const handleRefine = () => {
     if (!refineInput.trim() || refining) return;
     setRefining(true);
     setError(null);
     const instruction = refineInput.trim();
     setRefineInput('');
-    const existingContent = currentHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 3000);
-    const refinePrompt = 'You are refining an existing SAP delivery document. Here is the current document:\n\n' + existingContent + '\n\nUser instruction: ' + instruction + '\n\nGenerate the complete improved HTML document with ALL CSS embedded. Return ONLY HTML starting with DOCTYPE html.';
-    const params = new URLSearchParams({
-      agentId: job.agentId,
-      projectId: job.projectId || '',
-      projectName: job.formData?.projectName || '',
-      processName: job.formData?.processName || '',
-      description: refinePrompt,
-      client: job.formData?.client || '',
-      sapSystem: job.formData?.sapSystem || '',
-      module: job.formData?.module || '',
-      preparedBy: job.formData?.preparedBy || '',
-      version: job.formData?.version || '1.0'
-    });
-    const es = new EventSource('http://localhost:3002/generate-stream?' + params);
-    es.onmessage = (e) => {
-      const { type, data } = JSON.parse(e.data);
-      if (type === 'complete') {
-        es.close();
-        setCurrentHtml(data.html);
-        setRefining(false);
-        setRefined(true);
-      } else if (type === 'error') {
-        es.close();
-        setRefining(false);
-        setError('Refinement failed: ' + data);
-      }
-    };
-    es.onerror = () => { es.close(); setRefining(false); setError('Connection lost'); };
+    const jobId = startRefineJob(
+      job.agentId, job.agentName, job.projectId,
+      job.formData || {}, currentHtml, instruction
+    );
+    setRefineJobId(jobId);
   };
 
   return (
