@@ -141,7 +141,23 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Requirement *</label>
               <textarea value={formData.requirement} onChange={e => setFormData(p => ({ ...p, requirement: e.target.value }))} placeholder="Describe what needs to be delivered..." rows={5} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', resize: 'vertical', marginBottom: 12 }} />
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Current System Landscape *</label>
+              
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Attach Requirement Files (optional)</label>
+              <div style={{ border: '2px dashed #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 12, background: '#f8fafc' }}>
+                <input type='file' multiple accept='.txt,.pdf,.docx,.xlsx,.csv,.md,.json,.xml' onChange={e => {
+                  const files = Array.from(e.target.files);
+                  files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = ev => {
+                      setFormData(p => ({ ...p, requirement: (p.requirement ? p.requirement + '\n\n' : '') + '--- Attached: ' + file.name + ' ---\n' + ev.target.result }));
+                    };
+                    reader.readAsText(file);
+                  });
+                  e.target.value = '';
+                }} style={{ fontSize: 12, color: '#64748b', width: '100%' }} />
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Supports .txt, .md, .csv, .json, .xml files. Content will be appended to the requirement above.</div>
+              </div>
+<label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Current System Landscape *</label>
               <textarea value={formData.systemLandscape} onChange={e => setFormData(p => ({ ...p, systemLandscape: e.target.value }))} placeholder="e.g. ECC 6.0, BTP Trial, Blue Yonder WMS" rows={3} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', resize: 'vertical', marginBottom: 12 }} />
 
               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Existing SAP Licenses</label>
