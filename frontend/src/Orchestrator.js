@@ -34,21 +34,29 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
     }
     setStep('analysing');
     setAnalyseChunks('');
-    const params = new URLSearchParams({ ...formData });
-    const es = new EventSource('http://localhost:3002/analyse?' + params);
-    analyseESRef.current = es;
-    es.onmessage = (e) => {
-      const { type, data } = JSON.parse(e.data);
-      if (type === 'chunk') setAnalyseChunks(prev => prev + data);
-      else if (type === 'analysis_complete') {
-        setAnalysis(data);
-        setApprovedAgents(data.recommendedAgents || []);
-        setStep('approval');
-        es.close();
-      }
-      else if (type === 'error') { alert('Analysis failed: ' + data); setStep('form'); es.close(); }
-    };
-    es.onerror = () => { setStep('form'); es.close(); };
+    fetch('http://localhost:3002/analyse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...formData, attachedFiles })
+    }).then(res => {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      const read = () => reader.read().then(({ done, value }) => {
+        if (done) return;
+        const text = decoder.decode(value);
+        text.split('\n').forEach(line => {
+          if (!line.startsWith('data:')) return;
+          try {
+            const { type, data } = JSON.parse(line.slice(5));
+            if (type === 'chunk') setAnalyseChunks(prev => prev + data);
+            else if (type === 'analysis_complete') { setAnalysis(data); setApprovedAgents(data.recommendedAgents || []); setStep('approval'); }
+            else if (type === 'error') { alert('Analysis failed: ' + data); setStep('form'); }
+          } catch(e) {}
+        });
+        read();
+      }).catch(() => setStep('form'));
+      read();
+    }).catch(() => { alert('Could not connect to server'); setStep('form'); });
   };
 
   // Step 2 — Approve and run

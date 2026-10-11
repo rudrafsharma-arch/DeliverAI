@@ -16,6 +16,8 @@ module.exports = function(app, AGENTS) {
     };
 
     const { projectName, client, industry, requirement, systemLandscape, existingLicenses, budget, attachedFiles } = req.body || req.query;
+    console.log("[Analyse] body keys:", Object.keys(req.body||{}));
+    console.log("[Analyse] requirement:", (requirement||"").substring(0,80));
     const gitBash = process.env.GIT_BASH_PATH;
     const claudePath = process.env.CLAUDE_PATH;
 
