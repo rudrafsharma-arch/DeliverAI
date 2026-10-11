@@ -13,7 +13,9 @@ const SECTIONS=[
     {key:'OUTPUT_DIR',label:'Output Dir',placeholder:'./projects'}]},
   {id:'github',label:'GitHub',icon:'🐙',required:false,fields:[
     {key:'GITHUB_TOKEN',label:'GitHub Token',placeholder:'ghp_...',secret:true,help:'From github.com/settings/tokens'},
-    {key:'GITHUB_USER',label:'Username',placeholder:'your-github-username'}]},
+    {key:'GITHUB_USER',label:'Username',placeholder:'your-github-username'},
+    {key:'DATA_REPO',label:'Private Data Repo URL',placeholder:'https://github.com/your-org/DeliverAI-data',help:'Private repo for knowledge base and projects. e.g. https://github.com/rudrafsharma-arch/DeliverAI-data'},
+    {key:'DATA_REPO_TOKEN',label:'Data Repo Token',placeholder:'ghp_...',secret:true,help:'GitHub token with access to private data repo. Can be same as GitHub Token above.'}]},
   {id:'btp',label:'SAP BTP',icon:'☁️',required:false,fields:[
     {key:'BTP_TOKEN_URL',label:'Token URL',placeholder:'https://tenant.authentication.eu10.hana.ondemand.com/oauth/token',help:'From BTP Cockpit Service Key'},
     {key:'BTP_CLIENT_ID',label:'Client ID',placeholder:'sb-...'},
