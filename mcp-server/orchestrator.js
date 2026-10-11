@@ -85,7 +85,7 @@ class Orchestrator {
         if (code === 0 && output.length > 100) {
           this.completedAgents[agentId] = output;
           saveDocumentToProject(this.projectId, agentId, agentName, output);
-          this.send(String.fromCharCode(39)+subagent_document+String.fromCharCode(39), { agentId, agentName, projectId: this.projectId });
+          this.send(subagent_document, { agentId, agentName, projectId: this.projectId });
           this.send('subagent_status', { agentId, agentName, status: 'completed', phase });
           this.log(`✅ ${agentName} completed`, 'subagent_complete');
           resolve(output);
