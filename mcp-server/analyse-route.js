@@ -149,7 +149,7 @@ module.exports = function(app, AGENTS) {
 
     req.on('close', () => {
       clearInterval(silenceCheck);
-      try { proc.kill(); } catch(e) {}
+      // do not kill proc - let Claude finish
     });
   });
 };

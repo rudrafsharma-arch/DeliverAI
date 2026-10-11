@@ -7,10 +7,12 @@ const statusIcons = { running: '⚡', completed: '✅', failed: '❌', queued: '
 // Steps: form → analysing → approval → running → done
 export default function Orchestrator({ projects, onClose, orchState, orchMessages, orchAgents, orchDoc, onStart, onStop }) {
   const [selectedProject, setSelectedProject] = useState(projects?.[0]?.id || '');
-  const [formData, setFormData] = useState({ projectName: '', client: '', industry: 'Manufacturing', requirement: '', systemLandscape: '', existingLicenses: '', budget: 'Not defined', timeline: '', version: '1.0' });
+  const [formData, setFormData] = useState({ projectName: '', client: '', workstream: 'OTC', processName: '', industry: 'Manufacturing', requirement: '', systemLandscape: '', existingLicenses: '', budget: 'Not defined', timeline: '', version: '1.0' });
   const [step, setStep] = useState('form'); // form | analysing | approval | running | done
   const [analysis, setAnalysis] = useState(null); // { analysis, recommendedAgents, newAgents, estimatedTime }
   const [approvedAgents, setApprovedAgents] = useState([]);
+  const [orchDocs, setOrchDocs] = useState([]);
+  const [viewingDoc, setViewingDoc] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [extraAgents, setExtraAgents] = useState('');
   const [analyseChunks, setAnalyseChunks] = useState('');
@@ -134,13 +136,19 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
               {[
                 { key: 'projectName', label: 'Project Name *', placeholder: 'e.g. Mars S/4HANA Migration' },
                 { key: 'client', label: 'Client', placeholder: 'e.g. Mars Health and Wellness' },
-                { key: 'timeline', label: 'Target Go-Live', placeholder: 'e.g. 18 months' }
+                { key: 'timeline', label: 'Target Go-Live', placeholder: 'e.g. 18 months' },
+                { key: 'processName', label: 'Process Name *', placeholder: 'e.g. PO Acknowledgement, Sales Order, Bank Statement' }
               ].map(f => (
                 <div key={f.key} style={{ marginBottom: 12 }}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>{f.label}</label>
                   <input value={formData[f.key]} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box' }} />
                 </div>
               ))}
+
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Workstream *</label>
+              <select value={formData.workstream} onChange={e => setFormData(p => ({ ...p, workstream: e.target.value }))} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 12, fontSize: 13 }}>
+                {['P2P', 'OTC', 'MFG', 'RTR', 'HCM', 'SCM', 'Other'].map(o => <option key={o}>{o}</option>)}
+              </select>
 
               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Industry</label>
               <select value={formData.industry} onChange={e => setFormData(p => ({ ...p, industry: e.target.value }))} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 12, fontSize: 13 }}>

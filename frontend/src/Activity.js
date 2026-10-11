@@ -23,7 +23,7 @@ function groupJobs(jobs) {
   return Object.values(groups).sort((a,b) => new Date(b.jobs[0].startedAt) - new Date(a.jobs[0].startedAt));
 }
 
-export default function Activity({ onChainAgent }) {
+export default function Activity({ onChainAgent, projects = [] }) {
   const [jobs, setJobs] = useState(getJobs());
   const [viewingJob, setViewingJob] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState({});
@@ -32,6 +32,31 @@ export default function Activity({ onChainAgent }) {
     subscribe('activity', setJobs);
     return () => unsubscribe('activity');
   }, []);
+
+  // Build orchestrated jobs from projects
+  const orchestratedJobs = [];
+  projects.forEach(p => {
+    (p.documents || []).filter(d => d.fileName && d.fileName.includes('orchestrated')).forEach(d => {
+      orchestratedJobs.push({
+        jobId: d.fileName,
+        agentId: d.agentId,
+        agentName: d.agentName || d.agentId,
+        projectId: p.id,
+        status: 'completed',
+        startedAt: d.generatedAt || new Date().toISOString(),
+        completedAt: d.generatedAt || new Date().toISOString(),
+        formData: { projectName: p.name },
+        result: { fileName: d.fileName },
+        isOrchestrated: true
+      });
+    });
+  });
+
+  // Merge jobs - avoid duplicates
+  const allJobs = [...jobs];
+  orchestratedJobs.forEach(oj => {
+    if (!allJobs.find(j => j.jobId === oj.jobId)) allJobs.push(oj);
+  });
 
   const toggleGroup = (key) => setExpandedGroups(e => ({ ...e, [key]: !e[key] }));
 
@@ -57,8 +82,8 @@ export default function Activity({ onChainAgent }) {
 
   if (viewingJob) return <DocumentViewer job={viewingJob} onClose={() => setViewingJob(null)} />;
 
-  const groups = groupJobs(jobs);
-  const runningCount = jobs.filter(j => j.status === 'running').length;
+  const groups = groupJobs(allJobs);
+  const runningCount = allJobs.filter(j => j.status === 'running').length;
 
   if (groups.length === 0) return (
     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, padding:48, textAlign:'center', color:'#94a3b8' }}>
