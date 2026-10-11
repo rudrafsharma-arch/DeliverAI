@@ -1,7 +1,10 @@
 const { spawn } = require('child_process');
+const fs2 = require('fs');
+const path2 = require('path');
+const os = require('os');
 
 module.exports = function(app, AGENTS) {
-  app.get('/analyse', (req, res) => {
+  app.post('/analyse', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -12,11 +15,29 @@ module.exports = function(app, AGENTS) {
       if (!res.writableEnded) res.write('data: ' + JSON.stringify({ type, data }) + '\n\n');
     };
 
-    const { projectName, client, industry, requirement, systemLandscape, existingLicenses, budget } = req.query;
+    const { projectName, client, industry, requirement, systemLandscape, existingLicenses, budget, attachedFiles } = req.body || req.query;
     const gitBash = process.env.GIT_BASH_PATH;
     const claudePath = process.env.CLAUDE_PATH;
 
     if (!gitBash || !claudePath) { send('error', 'Claude not configured'); res.end(); return; }
+
+    // Write attached files to temp dir for Claude to read
+    const tempDir = path2.join(os.tmpdir(), 'deliverai-' + Date.now());
+    let tempFiles = [];
+    let fileSection = '';
+    if (attachedFiles && attachedFiles.length > 0) {
+      try {
+        fs2.mkdirSync(tempDir, { recursive: true });
+        attachedFiles.forEach(f => {
+          const safe = f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const fp = path2.join(tempDir, safe);
+          fs2.writeFileSync(fp, Buffer.from(f.base64, 'base64'));
+          tempFiles.push(fp);
+          fileSection += '\n- ' + fp.replace(/\\/g, '/') + ' (' + f.name + ')';
+        });
+      } catch(e) { console.error('Temp file error:', e.message); }
+    }
+    const attachNote = fileSection ? '\n\nATTACHED FILES - read these:\n' + fileSection : '';
 
     const agentList = Object.values(AGENTS)
       .filter(a => a.id !== 'architect')
@@ -32,7 +53,7 @@ module.exports = function(app, AGENTS) {
       'Landscape: ' + (systemLandscape || ''),
       'Licenses: ' + (existingLicenses || 'Unknown'),
       'Budget: ' + (budget || 'Not defined'),
-      'Requirement: ' + (requirement || ''),
+      'Requirement: ' + (requirement || '') + attachNote,
       '',
       'Available agents:',
       agentList,
@@ -51,7 +72,7 @@ module.exports = function(app, AGENTS) {
       'ESTIMATED_TIME: X minutes'
     ].join('\n');
 
-    const proc = spawn(gitBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], {
+    const proc = spawn(gitBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions' + (tempFiles.length > 0 ? ' --add-dir "' + tempDir.replace(/\\/g, '/') + '"' : '')], {
       env: { ...process.env, HOME: process.env.HOME || process.env.USERPROFILE }
     });
 
@@ -78,7 +99,9 @@ module.exports = function(app, AGENTS) {
 
     proc.stderr.on('data', () => {});
 
+    const cleanup = () => { try { if (tempFiles.length > 0) fs2.rmSync(tempDir, { recursive: true, force: true }); } catch(e) {} };
     proc.on('close', () => {
+      cleanup();
       clearInterval(silenceCheck);
       try {
         const ai = output.indexOf('ANALYSIS:');

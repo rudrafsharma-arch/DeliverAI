@@ -11,6 +11,7 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
   const [step, setStep] = useState('form'); // form | analysing | approval | running | done
   const [analysis, setAnalysis] = useState(null); // { analysis, recommendedAgents, newAgents, estimatedTime }
   const [approvedAgents, setApprovedAgents] = useState([]);
+  const [attachedFiles, setAttachedFiles] = useState([]);
   const [extraAgents, setExtraAgents] = useState('');
   const [analyseChunks, setAnalyseChunks] = useState('');
   const [runtimeAgents] = useState([]);
@@ -144,18 +145,29 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
               
               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Attach Requirement Files (optional)</label>
               <div style={{ border: '2px dashed #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 12, background: '#f8fafc' }}>
-                <input type='file' multiple accept='.txt,.pdf,.docx,.xlsx,.csv,.md,.json,.xml' onChange={e => {
+                <input type='file' multiple accept='.txt,.pdf,.docx,.xlsx,.csv,.md,.json,.xml,.png,.jpg,.jpeg' onChange={e => {
                   const files = Array.from(e.target.files);
                   files.forEach(file => {
                     const reader = new FileReader();
                     reader.onload = ev => {
-                      setFormData(p => ({ ...p, requirement: (p.requirement ? p.requirement + '\n\n' : '') + '--- Attached: ' + file.name + ' ---\n' + ev.target.result }));
+                      const base64 = ev.target.result.split(',')[1];
+                      setAttachedFiles(prev => [...prev, { name: file.name, base64, type: file.type }]);
                     };
-                    reader.readAsText(file);
+                    reader.readAsDataURL(file);
                   });
                   e.target.value = '';
                 }} style={{ fontSize: 12, color: '#64748b', width: '100%' }} />
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Supports .txt, .md, .csv, .json, .xml files. Content will be appended to the requirement above.</div>
+                {attachedFiles.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    {attachedFiles.map((f, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#1e40af', background: '#eff6ff', borderRadius: 4, padding: '3px 8px', marginBottom: 3 }}>
+                        <span>📎 {f.name}</span>
+                        <button onClick={() => setAttachedFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 14, padding: 0 }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Supports PDF, images, Word, Excel, CSV, TXT, JSON, XML. Claude will read all attached files.</div>
               </div>
 <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Current System Landscape *</label>
               <textarea value={formData.systemLandscape} onChange={e => setFormData(p => ({ ...p, systemLandscape: e.target.value }))} placeholder="e.g. ECC 6.0, BTP Trial, Blue Yonder WMS" rows={3} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', resize: 'vertical', marginBottom: 12 }} />
