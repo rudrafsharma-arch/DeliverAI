@@ -197,6 +197,7 @@ export default function Documents({ projects }) {
                             <span style={{ fontSize:10, fontWeight:700, color:statusColors[doc.status]||'#94a3b8', background:(statusColors[doc.status]||'#94a3b8')+'20', padding:'2px 6px', borderRadius:10 }}>{statusLabels[doc.status]||'DRAFT'}</span>
                             <button onClick={() => openDoc(doc)} style={{ padding:'3px 8px', borderRadius:5, border:'none', background:'#1e40af', color:'#fff', cursor:'pointer', fontSize:11 }}>Open</button>
                             {doc.status !== 'APPROVED' && <button onClick={() => setApprovalModal({doc, projectId: selectedProject.id})} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #f59e0b', background:'#fff', color:'#f59e0b', cursor:'pointer', fontSize:11 }}>Review</button>}
+                            {doc.status === 'CHANGES_REQUESTED' && <button onClick={() => { const comments=(doc.comments||[]).map(c=>c.text).join('; '); alert('Regenerate with context: '+comments+'\n\nPlease run the agent again from the Agents tab with this context.'); }} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #7c3aed', background:'#fff', color:'#7c3aed', cursor:'pointer', fontSize:11 }}>Regenerate</button>}
                             <button onClick={() => deleteDoc(doc)} disabled={deleting===doc.fileName} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:11 }}>{deleting===doc.fileName?'...':'Delete'}</button>
                           </div>
                         ))}
@@ -213,7 +214,7 @@ export default function Documents({ projects }) {
       </div>
     </div>
       {approvalModal && (
-        <div style={{ position:fixed, top:0, left:0, right:0, bottom:0, background:rgba(0,0,0,0.5), display:flex, alignItems:center, justifyContent:center, zIndex:1000 }}>
+        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
           <div style={{ background:'#fff', borderRadius:12, padding:24, width:480, boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ fontSize:16, fontWeight:700, marginBottom:4 }}>Review Document</div>
             <div style={{ fontSize:12, color:'#64748b', marginBottom:16 }}>{approvalModal.doc.agentName} — {approvalModal.doc.fileName}</div>
