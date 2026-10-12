@@ -5,6 +5,7 @@ import Activity from './Activity';
 import { startJob, getRunningCount, subscribe, unsubscribe, importJob, updateApproval } from './JobManager';
 import Orchestrator from './Orchestrator';
 import Documents from './Documents';
+import Review from './Review';
 
 const api = {
   get: (url) => fetch(url).then(r => r.json()),
@@ -677,10 +678,10 @@ export default function App() {
             </div>
           </div>
           <nav style={{ display:'flex', gap:2, marginLeft:8 }}>
-            {['agents','activity','documents','settings'].map(v=>(
+            {['agents','activity','documents','review','settings'].map(v=>(
               <button key={v} onClick={()=>{ setView(v); setSelectedAgent(null); }}
                 style={{ background:view===v?'#e8f2ff':'none', color:view===v?BLUE:'#64748b', border:'none', borderRadius:6, padding:'5px 12px', fontSize:13, cursor:'pointer', fontWeight:view===v?600:400 }}>
-                {v==='agents'?'Agents':v==='activity'?'Activity'+(runningCount>0?' ('+runningCount+')':''):v==='documents'?'Documents':'Settings'}
+                {v==='agents'?'Agents':v==='activity'?'Activity'+(runningCount>0?' ('+runningCount+')':''):v==='documents'?'Documents':(v==='review'?'Review':'Settings')}
               </button>
             ))}
           </nav>
@@ -713,6 +714,8 @@ export default function App() {
           <div style={{ flex:1, display:'flex' }}><Documents projects={projects} /></div>
         ) : view === 'settings' ? (
           <div style={{ flex:1 }}><Settings /></div>
+        ) : view==='review' ? (
+          <div style={{ flex:1, display:'flex' }}><Review projects={projects} /></div>
         ) : (
           <>
             <aside style={{ width:236, flexShrink:0, display:'flex', flexDirection:'column', gap:12 }}>
