@@ -106,12 +106,12 @@ export default function Documents({ projects }) {
     const proj = selectedProject;
     const docsToDelete = (proj.documents || []).filter(d => {
       const fp = (d.filePath || d.fileName);
+      if (!fp) return false;
       const clean = fp.startsWith(proj.id + '/') ? fp.slice(proj.id.length + 1) : fp;
       const parts = clean.split('/');
-      const WORKSTREAMS = ['OTC','P2P','MFG','RTR','HCM','SCM','FI','MM','SD','HR','EWM','TM'];
-      const wsIdx = parts.findIndex(p => WORKSTREAMS.includes(p.toUpperCase()));
-      const docWs = wsIdx >= 0 ? parts[wsIdx].toUpperCase() : '_archive';
-      const docProc = wsIdx >= 0 ? parts[wsIdx+1] : parts[0];
+      // Direct match: workstream is first folder, process is second
+      const docWs = parts[0] || '';
+      const docProc = parts[1] || '';
       if (process) return docWs === workstream && docProc === process;
       return docWs === workstream;
     });
