@@ -541,18 +541,25 @@ app.post('/rerun-agent', async (req, res) => {
     const agentPromptPath = path.join(__dirname, '../agents', agentId, 'prompt.md');
     const agentPrompt = fs.existsSync(agentPromptPath) ? fs.readFileSync(agentPromptPath, 'utf8') : '';
     const subPrompt = agentPrompt + '\n\n## PROJECT\nProject: ' + (proj.name||'') + '\nClient: ' + (proj.client||'') + '\nWorkstream: ' + (proj.workstream||'') + '\nProcess: ' + (proj.processName||'') + '\n\n## REVIEWER FEEDBACK - ADDRESS ALL POINTS\n' + reviewComments + '\n\nRegenerate the complete document addressing all reviewer feedback above.';
-    const gitBash = CONFIG.GIT_BASH_PATH || 'C:/Program Files/Git/bin/bash.exe';
-    const claudePath = CONFIG.CLAUDE_PATH || 'claude';
+    const gitBash = process.env.GIT_BASH_PATH;
+    const claudePath = process.env.CLAUDE_PATH;
+    if (!gitBash || !claudePath) return res.status(500).json({ error: 'Claude not configured. Check Settings.' });
     const { spawn } = require('child_process');
-    const proc = spawn(gitBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], { env: { ...process.env, HOME: process.env.USERPROFILE } });
+    const winBash = gitBash.split(String.fromCharCode(47)).join(String.fromCharCode(92));
+    const proc = spawn(winBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], { env: { ...process.env, HOME: process.env.USERPROFILE } });
+    proc.on('error', (err) => console.error('[Rerun] Spawn error:', err.message));
     proc.stdin.write(subPrompt);
     proc.stdin.end();
     let output = '';
     proc.stdout.on('data', d => output += d.toString());
-    proc.on('close', () => {
-      const { saveDocumentToProject } = require('./doc-saver');
-      saveDocumentToProject(projectId, agentId, agentName, output, proj);
-      console.log('[Rerun] ' + agentName + ' regenerated for ' + projectId);
+    proc.on('close', (code) => {
+      if (code === 0 && output.length > 100) {
+        const { saveDocumentToProject } = require('./doc-saver');
+        saveDocumentToProject(projectId, agentId, agentName, output, proj);
+        console.log('[Rerun] ' + agentName + ' regenerated for ' + projectId);
+      } else {
+        console.error('[Rerun] Failed, code:', code);
+      }
     });
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
