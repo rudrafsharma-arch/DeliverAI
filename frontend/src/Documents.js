@@ -24,16 +24,30 @@ export default function Documents({ projects }) {
     const tree = {};
     (project.documents || []).forEach(doc => {
       const fp = doc.filePath || doc.fileName;
+      if (!fp) return;
       const parts = fp.split('/');
-      let key = '_root';
-      if (parts.length > 2) {
-        const sub = parts.slice(1);
-        key = sub.length > 1 ? sub.slice(0, -1).join('/') : '_root';
+      // parts[0] = projectId, parts[1] = client, parts[2] = workstream, parts[3] = process, parts[4] = filename
+      // OR parts[0] = filename (flat/root)
+      let key;
+      if (parts.length >= 4) {
+        // Has proper folder structure - use client/workstream/process
+        key = parts.slice(1, parts.length - 1).join('/');
+      } else {
+        key = '_root';
       }
       if (!tree[key]) tree[key] = [];
-      tree[key].push(doc);
+      // avoid duplicates
+      if (!tree[key].find(d => d.fileName === doc.fileName)) {
+        tree[key].push(doc);
+      }
     });
+    // Remove _root if there are proper folders
+    const properFolders = Object.keys(tree).filter(k => k !== '_root' && !k.includes('General'));
+    if (properFolders.length > 0) delete tree['_root'];
+    // Also remove General folder if proper folders exist
+    Object.keys(tree).forEach(k => { if (k.includes('General')) delete tree[k]; });
     setFolderTree(tree);
+    // Expand first proper folder
     const first = Object.keys(tree)[0];
     if (first) setExpandedFolders({ [first]: true });
   };
@@ -61,7 +75,14 @@ export default function Documents({ projects }) {
 
   const toggleFolder = (key) => setExpandedFolders(e => ({ ...e, [key]: !e[key] }));
 
-  const folderLabel = (key) => key === '_root' ? '📁 Root Documents' : '📁 ' + key.split('/').join(' › ');
+  const folderLabel = (key) => {
+    if (key === '_root') return '📁 Root Documents';
+    const parts = key.split('/');
+    // Show as: Workstream › Process
+    if (parts.length >= 3) return '📁 ' + parts[1] + ' › ' + parts[2];
+    if (parts.length === 2) return '📁 ' + parts[0] + ' › ' + parts[1];
+    return '📁 ' + key;
+  };
 
   if (viewingDoc) {
     return (
