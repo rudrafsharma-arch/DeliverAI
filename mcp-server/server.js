@@ -533,6 +533,30 @@ app.post('/save-document', (req, res) => {
   console.log('[Save] Document updated:', fullPath);
   res.json({ success: true });
 });
+app.post('/rerun-agent', async (req, res) => {
+  const { projectId, agentId, agentName, filePath, reviewComments } = req.body;
+  try {
+    const proj = loadProject(projectId);
+    if (!proj) return res.status(404).json({ error: 'Project not found' });
+    const agentPromptPath = path.join(__dirname, '../agents', agentId, 'prompt.md');
+    const agentPrompt = fs.existsSync(agentPromptPath) ? fs.readFileSync(agentPromptPath, 'utf8') : '';
+    const subPrompt = agentPrompt + '\n\n## PROJECT\nProject: ' + (proj.name||'') + '\nClient: ' + (proj.client||'') + '\nWorkstream: ' + (proj.workstream||'') + '\nProcess: ' + (proj.processName||'') + '\n\n## REVIEWER FEEDBACK - ADDRESS ALL POINTS\n' + reviewComments + '\n\nRegenerate the complete document addressing all reviewer feedback above.';
+    const gitBash = CONFIG.GIT_BASH_PATH || 'C:/Program Files/Git/bin/bash.exe';
+    const claudePath = CONFIG.CLAUDE_PATH || 'claude';
+    const { spawn } = require('child_process');
+    const proc = spawn(gitBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], { env: { ...process.env, HOME: process.env.USERPROFILE } });
+    proc.stdin.write(subPrompt);
+    proc.stdin.end();
+    let output = '';
+    proc.stdout.on('data', d => output += d.toString());
+    proc.on('close', () => {
+      const { saveDocumentToProject } = require('./doc-saver');
+      saveDocumentToProject(projectId, agentId, agentName, output, proj);
+      console.log('[Rerun] ' + agentName + ' regenerated for ' + projectId);
+    });
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 // Cleanup stale processes
 app.post('/cleanup', (req, res) => {
   require('child_process').exec('taskkill /F /IM claude.exe 2>nul & taskkill /F /IM bash.exe 2>nul', (err, stdout) => {
