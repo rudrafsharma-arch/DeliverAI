@@ -547,7 +547,9 @@ function processRerunQueue() {
   if (!proj) { rerunRunning = false; processRerunQueue(); return; }
   const agentPromptPath = path.join(__dirname, '..', 'agents', agentId, 'prompt.md');
   const agentPrompt = fs.existsSync(agentPromptPath) ? fs.readFileSync(agentPromptPath, 'utf8') : '';
-  const subPrompt = agentPrompt + '\n\n## REVIEWER FEEDBACK\n' + reviewComments + '\n\nRegenerate addressing all reviewer feedback.';
+  // For architect, add explicit instruction to regenerate HTML only
+  const isArchitect = agentId === 'architect';
+  const subPrompt = agentPrompt + '\n\n## PROJECT\nProject: ' + (proj.name||'') + '\nClient: ' + (proj.client||'') + '\n\n## REVIEWER FEEDBACK - ADDRESS ALL POINTS\n' + reviewComments + '\n\n' + (isArchitect ? 'Regenerate ONLY the HTML Solution Architecture document addressing the reviewer feedback. Do NOT include AGENT_PLAN_START or RUNTIME_AGENT blocks. Output only the HTML document.' : 'Regenerate the complete document addressing all reviewer feedback above.');
   const gitBash = process.env.GIT_BASH_PATH;
   const claudePath = process.env.CLAUDE_PATH;
   if (!gitBash || !claudePath) { completedReruns[jobId] = { done: true, error: 'Claude not configured' }; rerunRunning = false; processRerunQueue(); return; }
