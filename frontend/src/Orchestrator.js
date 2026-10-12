@@ -302,15 +302,15 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
                           .then(r => r.text())
                           .then(html => setViewingDoc({ ...doc, html }))
                           .catch(e => console.error('load failed', e));
-                      } else if (projectId) {
-                        fetch('http://localhost:3002/projects/' + projectId)
+                      } else if (selectedProject) {
+                        fetch('http://localhost:3002/projects/' + selectedProject)
                           .then(r => r.json())
                           .then(proj => {
                             const docs = (proj.documents || []).filter(d => d.agentId === agent.id && d.fileName);
                             if (!docs.length) { alert('Document not saved yet for ' + agent.name); return; }
                             const latest = docs[docs.length - 1];
                             const fp = latest.filePath || latest.fileName;
-                            fetch('http://localhost:3002/download/' + projectId + '/' + fp)
+                            fetch('http://localhost:3002/download/' + selectedProject + '/' + fp)
                               .then(r => r.text())
                               .then(html => setViewingDoc({ agentId: agent.id, agentName: agent.name, fileName: latest.fileName, html }))
                               .catch(e => alert('Could not load: ' + e.message));
