@@ -295,12 +295,29 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
                   {agents.filter(a => a.phase === phase).map(agent => (
                     <div key={agent.id} onClick={() => {
                       if (agent.status !== 'completed') return;
+                      // Try orchDocs first, then fall back to project.json
                       const doc = orchDocs.find(d => d.agentId === agent.id);
-                      if (doc) {
+                      if (doc && doc.fileName) {
                         fetch('http://localhost:3002/download/' + doc.projectId + '/' + (doc.filePath || doc.fileName))
                           .then(r => r.text())
                           .then(html => setViewingDoc({ ...doc, html }))
-                          .catch(() => alert('Could not load document'));
+                          .catch(e => console.error('load failed', e));
+                      } else if (projectId) {
+                        fetch('http://localhost:3002/projects/' + projectId)
+                          .then(r => r.json())
+                          .then(proj => {
+                            const docs = (proj.documents || []).filter(d => d.agentId === agent.id && d.fileName);
+                            if (!docs.length) { alert('Document not saved yet for ' + agent.name); return; }
+                            const latest = docs[docs.length - 1];
+                            const fp = latest.filePath || latest.fileName;
+                            fetch('http://localhost:3002/download/' + projectId + '/' + fp)
+                              .then(r => r.text())
+                              .then(html => setViewingDoc({ agentId: agent.id, agentName: agent.name, fileName: latest.fileName, html }))
+                              .catch(e => alert('Could not load: ' + e.message));
+                          })
+                          .catch(e => alert('Could not load project: ' + e.message));
+                      } else {
+                        alert('No project selected');
                       }
                     }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: agent.status === 'running' ? '#eff6ff' : agent.status === 'completed' ? '#f0fdf4' : agent.status === 'failed' ? '#fef2f2' : '#f8fafc', marginBottom: 6, border: `1px solid ${statusColors[agent.status] || '#e2e8f0'}30`, cursor: agent.status === 'completed' ? 'pointer' : 'default' }}>
                       <span style={{ fontSize: 16 }}>{statusIcons[agent.status] || '⏳'}</span>

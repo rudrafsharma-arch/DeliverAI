@@ -41,11 +41,7 @@ export default function Documents({ projects }) {
         tree[key].push(doc);
       }
     });
-    // Remove _root if there are proper folders
-    const properFolders = Object.keys(tree).filter(k => k !== '_root' && !k.includes('General'));
-    if (properFolders.length > 0) delete tree['_root'];
-    // Also remove General folder if proper folders exist
-    Object.keys(tree).forEach(k => { if (k.includes('General')) delete tree[k]; });
+    // Keep all folders - rename _root to Archive for display
     setFolderTree(tree);
     // Expand first proper folder
     const first = Object.keys(tree)[0];
@@ -76,12 +72,14 @@ export default function Documents({ projects }) {
   const toggleFolder = (key) => setExpandedFolders(e => ({ ...e, [key]: !e[key] }));
 
   const folderLabel = (key) => {
-    if (key === '_root') return '📁 Root Documents';
+    if (key === '_root') return '🗄️ Archive (old flat files)';
     const parts = key.split('/');
-    // Show as: Workstream › Process
-    if (parts.length >= 3) return '📁 ' + parts[1] + ' › ' + parts[2];
+    if (parts.length >= 3) {
+      if (parts[1] === 'General') return '🗄️ Archive › ' + parts[2];
+      return '📁 ' + parts[1] + ' › ' + parts[2];
+    }
     if (parts.length === 2) return '📁 ' + parts[0] + ' › ' + parts[1];
-    return '📁 ' + key;
+    return '🗄️ Archive';
   };
 
   if (viewingDoc) {
@@ -114,7 +112,7 @@ export default function Documents({ projects }) {
           <>
             <div style={{ marginBottom:16 }}>
               <div style={{ fontSize:16, fontWeight:700, color:'#1e293b' }}>{selectedProject.name}</div>
-              <div style={{ fontSize:12, color:'#64748b' }}>{[selectedProject.client, selectedProject.workstream, selectedProject.processName].filter(Boolean).join(' › ')}</div>
+              <div style={{ fontSize:12, color:'#64748b' }}>{selectedProject.client}{' · '}{(selectedProject.documents||[]).length} documents</div>
             </div>
             {Object.keys(folderTree).length === 0 && <div style={{ color:'#94a3b8', fontSize:13, textAlign:'center', marginTop:40 }}>No documents yet. Run an Architect job to generate documents.</div>}
             {Object.keys(folderTree).map(key => (
