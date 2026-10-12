@@ -33,30 +33,7 @@ export default function Activity({ onChainAgent, projects = [] }) {
     return () => unsubscribe('activity');
   }, []);
 
-  // Build orchestrated jobs from projects
-  const orchestratedJobs = [];
-  projects.forEach(p => {
-    (p.documents || []).filter(d => d.fileName && d.fileName.includes('orchestrated')).forEach(d => {
-      orchestratedJobs.push({
-        jobId: d.fileName,
-        agentId: d.agentId,
-        agentName: d.agentName || d.agentId,
-        projectId: p.id,
-        status: 'completed',
-        startedAt: d.generatedAt || new Date().toISOString(),
-        completedAt: d.generatedAt || new Date().toISOString(),
-        formData: { projectName: p.name },
-        result: { fileName: d.fileName },
-        isOrchestrated: true
-      });
-    });
-  });
-
-  // Merge jobs - avoid duplicates
   const allJobs = [...jobs];
-  orchestratedJobs.forEach(oj => {
-    if (!allJobs.find(j => j.jobId === oj.jobId)) allJobs.push(oj);
-  });
 
   const toggleGroup = (key) => setExpandedGroups(e => ({ ...e, [key]: !e[key] }));
 

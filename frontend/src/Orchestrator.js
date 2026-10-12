@@ -293,14 +293,26 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
                     Phase {phase} — {phaseNames[phase] || 'Execution'}
                   </div>
                   {agents.filter(a => a.phase === phase).map(agent => (
-                    <div key={agent.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: agent.status === 'running' ? '#eff6ff' : agent.status === 'completed' ? '#f0fdf4' : agent.status === 'failed' ? '#fef2f2' : '#f8fafc', marginBottom: 6, border: `1px solid ${statusColors[agent.status] || '#e2e8f0'}30` }}>
+                    <div key={agent.id} onClick={() => {
+                      if (agent.status !== 'completed') return;
+                      const doc = orchDocs.find(d => d.agentId === agent.id);
+                      if (doc) {
+                        fetch('http://localhost:3002/download/' + doc.projectId + '/' + (doc.filePath || doc.fileName))
+                          .then(r => r.text())
+                          .then(html => setViewingDoc({ ...doc, html }))
+                          .catch(() => alert('Could not load document'));
+                      }
+                    }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: agent.status === 'running' ? '#eff6ff' : agent.status === 'completed' ? '#f0fdf4' : agent.status === 'failed' ? '#fef2f2' : '#f8fafc', marginBottom: 6, border: `1px solid ${statusColors[agent.status] || '#e2e8f0'}30`, cursor: agent.status === 'completed' ? 'pointer' : 'default' }}>
                       <span style={{ fontSize: 16 }}>{statusIcons[agent.status] || '⏳'}</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{agent.name}</div>
                         {agent.isOrchestrator && <div style={{ fontSize: 10, color: '#1e40af', fontWeight: 700 }}>ORCHESTRATOR</div>}
                         {agent.isRuntime && <div style={{ fontSize: 10, color: '#7c3aed', fontWeight: 700 }}>RUNTIME CREATED</div>}
                       </div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: statusColors[agent.status] || '#94a3b8', textTransform: 'uppercase' }}>{agent.status}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: statusColors[agent.status] || '#94a3b8', textTransform: 'uppercase' }}>
+                        {agent.status}
+                        {agent.status === 'completed' && orchDocs.find(d => d.agentId === agent.id) && <span style={{ display: 'block', fontSize: 9, color: '#1e40af' }}>View →</span>}
+                      </div>
                     </div>
                   ))}
                 </div>

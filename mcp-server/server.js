@@ -501,6 +501,40 @@ Now analyse and deliver.`;
 });
 // ─────────────────────────────────────────────────────────────────────────────
 
+
+// Delete document
+app.delete('/documents/:projectId/*', (req, res) => {
+  const projectId = req.params.projectId;
+  const relPath = decodeURIComponent(req.params[0]);
+  const projectDir = getProjectDir(projectId);
+  const filePath = path.join(projectDir, relPath);
+  
+  // Security check - must be within projects dir
+  if (!filePath.startsWith(projectDir)) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
+  try {
+    // Delete the file
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    
+    // Remove from project.json documents array
+    const projFile = path.join(projectDir, 'project.json');
+    if (fs.existsSync(projFile)) {
+      const project = JSON.parse(fs.readFileSync(projFile, 'utf8'));
+      project.documents = (project.documents || []).filter(d => 
+        (d.filePath || d.fileName) !== relPath && d.fileName !== relPath.split('/').pop()
+      );
+      project.updatedAt = new Date().toISOString();
+      fs.writeFileSync(projFile, JSON.stringify(project, null, 2), 'utf8');
+    }
+    
+    console.log('[Delete] Removed:', filePath);
+    res.json({ success: true, deleted: relPath });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 require("./analyse-route")(app, AGENTS);
 
 app.listen(MCP_PORT, () => {
