@@ -533,47 +533,64 @@ app.post('/save-document', (req, res) => {
   console.log('[Save] Document updated:', fullPath);
   res.json({ success: true });
 });
-app.post('/rerun-agent', async (req, res) => {
-  const { projectId, agentId, agentName, filePath, reviewComments } = req.body;
-  try {
-    const proj = loadProject(projectId);
-    if (!proj) return res.status(404).json({ error: 'Project not found' });
-    const agentPromptPath = path.join(__dirname, '../agents', agentId, 'prompt.md');
-    const agentPrompt = fs.existsSync(agentPromptPath) ? fs.readFileSync(agentPromptPath, 'utf8') : '';
-    const subPrompt = agentPrompt + '\n\n## PROJECT\nProject: ' + (proj.name||'') + '\nClient: ' + (proj.client||'') + '\nWorkstream: ' + (proj.workstream||'') + '\nProcess: ' + (proj.processName||'') + '\n\n## REVIEWER FEEDBACK - ADDRESS ALL POINTS\n' + reviewComments + '\n\nRegenerate the complete document addressing all reviewer feedback above.';
-    const gitBash = process.env.GIT_BASH_PATH;
-    const claudePath = process.env.CLAUDE_PATH;
-    if (!gitBash || !claudePath) return res.status(500).json({ error: 'Claude not configured. Check Settings.' });
-    const { spawn } = require('child_process');
-    const winBash = gitBash.split(String.fromCharCode(47)).join(String.fromCharCode(92));
-    const proc = spawn(winBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], { env: { ...process.env, HOME: process.env.USERPROFILE } });
-    proc.on('error', (err) => console.error('[Rerun] Spawn error:', err.message));
-    proc.stdin.write(subPrompt);
-    proc.stdin.end();
-    let output = '';
-    proc.stdout.on('data', d => output += d.toString());
-    proc.on('close', (code) => {
-      if (code === 0 && output.length > 100) {
-        const { saveDocumentToProject } = require('./doc-saver');
-        const fpParts = (filePath || '').split('/');
-        const ws = fpParts.length >= 3 ? fpParts[fpParts.length-3] : (proj.workstream || 'General');
-        const proc2 = fpParts.length >= 2 ? fpParts[fpParts.length-2] : (proj.processName || 'Process');
-        saveDocumentToProject(projectId, agentId, agentName, output, { ...proj, workstream: ws, processName: proc2 });
-        console.log('[Rerun] ' + agentName + ' regenerated -> ' + ws + '/' + proc2);
-      }
-    });
-    res.json({ success: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-// Cleanup stale processes
-app.post('/cleanup', (req, res) => {
-  require('child_process').exec('taskkill /F /IM claude.exe 2>nul & taskkill /F /IM bash.exe 2>nul', (err, stdout) => {
-    console.log('[Cleanup] Stale processes killed');
-    res.json({ success: true, output: stdout });
+
+const rerunQueue = [];
+let rerunRunning = false;
+const completedReruns = {};
+
+function processRerunQueue() {
+  if (rerunRunning || rerunQueue.length === 0) return;
+  rerunRunning = true;
+  const job = rerunQueue.shift();
+  const { projectId, agentId, agentName, filePath, reviewComments, jobId } = job;
+  const proj = loadProject(projectId);
+  if (!proj) { rerunRunning = false; processRerunQueue(); return; }
+  const agentPromptPath = path.join(__dirname, '..', 'agents', agentId, 'prompt.md');
+  const agentPrompt = fs.existsSync(agentPromptPath) ? fs.readFileSync(agentPromptPath, 'utf8') : '';
+  const subPrompt = agentPrompt + '\n\n## REVIEWER FEEDBACK\n' + reviewComments + '\n\nRegenerate addressing all reviewer feedback.';
+  const gitBash = process.env.GIT_BASH_PATH;
+  const claudePath = process.env.CLAUDE_PATH;
+  if (!gitBash || !claudePath) { completedReruns[jobId] = { done: true, error: 'Claude not configured' }; rerunRunning = false; processRerunQueue(); return; }
+  const winBash = gitBash.replace(/[/]/g, '\\');
+  const { spawn } = require('child_process');
+  const proc = spawn(winBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], { env: { ...process.env, HOME: process.env.USERPROFILE } });
+  proc.on('error', (err) => { completedReruns[jobId] = { done: true, error: err.message }; rerunRunning = false; processRerunQueue(); });
+  proc.stdin.write(subPrompt);
+  proc.stdin.end();
+  let output = '';
+  proc.stdout.on('data', d => output += d.toString());
+  proc.on('close', (code) => {
+    if (code === 0 && output.length > 100) {
+      const { saveDocumentToProject } = require('./doc-saver');
+      const fpParts = (filePath || '').split('/');
+      const folderWs = fpParts.length >= 3 ? fpParts[fpParts.length - 3] : (proj.workstream || 'General');
+      const folderProc = fpParts.length >= 2 ? fpParts[fpParts.length - 2] : (proj.processName || 'Process');
+      const saved = saveDocumentToProject(projectId, agentId, agentName, output, { ...proj, workstream: folderWs, processName: folderProc });
+      completedReruns[jobId] = { done: true, fileName: saved, agentName };
+      console.log('[Queue] Done:', agentName, '->', saved);
+    } else {
+      completedReruns[jobId] = { done: true, error: 'Failed code:' + code };
+    }
+    rerunRunning = false;
+    processRerunQueue();
   });
+}
+
+app.post('/rerun-agent', (req, res) => {
+  const { projectId, agentId, agentName, filePath, reviewComments } = req.body;
+  const jobId = Date.now() + '-' + agentId;
+  const position = rerunQueue.length + (rerunRunning ? 1 : 0);
+  rerunQueue.push({ projectId, agentId, agentName, filePath, reviewComments, jobId });
+  processRerunQueue();
+  const msg = position > 0 ? 'Queued at position ' + (position + 1) + '. Will run after current job.' : 'Claude is generating. Check Documents tab in ~3 min.';
+  res.json({ success: true, jobId, queued: position > 0, message: msg });
 });
 
-// Delete document
+app.get('/rerun-status/:jobId', (req, res) => {
+  const result = completedReruns[req.params.jobId];
+  if (result) { delete completedReruns[req.params.jobId]; res.json(result); }
+  else res.json({ done: false, queueLength: rerunQueue.length, running: rerunRunning });
+});
 app.delete('/documents/:projectId/*', (req, res) => {
   const projectId = req.params.projectId;
   const relPath = decodeURIComponent(req.params[0]);
