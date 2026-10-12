@@ -394,3 +394,17 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
     </div>
   );
 }
+        {/* Viewing subagent doc */}
+        {viewingDoc && (
+          <div style={{ width: 420, borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '10px 16px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={() => setViewingDoc(null)} style={{ padding: '3px 8px', borderRadius: 5, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: 11 }}>← Back</button>
+              <span style={{ fontWeight: 700, fontSize: 13, color: '#1e40af', flex: 1 }}>{viewingDoc.agentName}</span>
+              <button onClick={() => { const b=new Blob([viewingDoc.html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=viewingDoc.fileName||'doc.html';a.click(); }} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#1e40af', color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Download</button>
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <iframe srcDoc={viewingDoc.html} style={{ width: '100%', height: '100%', border: 'none' }} title={viewingDoc.agentName} />
+            </div>
+          </div>
+        )}
+
