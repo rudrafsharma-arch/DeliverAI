@@ -170,7 +170,7 @@ export default function Documents({ projects }) {
         {selectedProject ? (
           <>
             <div style={{ marginBottom:16 }}>
-              <div style={{ fontSize:16, fontWeight:700, color:'#1e293b' }}>{selectedProject.name}</div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}><div style={{ fontSize:16, fontWeight:700, color:'#1e293b' }}>{selectedProject.name}</div><button onClick={() => fetch('/api/projects').then(r=>r.json()).then(data=>{const p=data.find(x=>x.id===selectedProject.id);if(p){setSelectedProject(p);buildFolderTree(p);}})} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:11, color:'#64748b' }}>↺ Refresh</button></div>
               <div style={{ fontSize:12, color:'#64748b' }}>{selectedProject.client}{' · '}{(selectedProject.documents||[]).length} documents</div>
             </div>
             {Object.keys(folderTree).length === 0 && <div style={{ color:'#94a3b8', fontSize:13, textAlign:'center', marginTop:40 }}>No documents yet.</div>}
