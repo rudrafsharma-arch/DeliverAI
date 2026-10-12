@@ -6,9 +6,10 @@ const path = require('path');
 
 const { extractHTML, saveDocumentToProject } = require('./doc-saver');
 class Orchestrator {
-  constructor(send, projectId, gitBash, claudePath) {
+  constructor(send, projectId, gitBash, claudePath, formData) {
     this.send = send;           // SSE send function
     this.projectId = projectId;
+    this.formData = formData || {};
     this.gitBash = gitBash;
     this.claudePath = claudePath;
     this.agentsDir = path.join(__dirname, '..', 'agents');
@@ -84,7 +85,7 @@ class Orchestrator {
         delete this.runningAgents[agentId];
         if (code === 0 && output.length > 100) {
           this.completedAgents[agentId] = output;
-          const savedFileName = saveDocumentToProject(this.projectId, agentId, agentName, output);
+          const savedFileName = saveDocumentToProject(this.projectId, agentId, agentName, output, this.formData);
           try { const pj=require('path').join(__dirname,'../projects',this.projectId,'project.json'); let fp=savedFileName; try{ const docs=JSON.parse(require('fs').readFileSync(pj,'utf8')).documents||[]; const last=docs[docs.length-1]; if(last) fp=last.filePath||savedFileName; }catch(e){} this.send('subagent_document', { agentId, agentName, projectId: this.projectId, fileName: savedFileName, filePath: fp }); } catch(e) { console.error('send error:', e.message); }
           this.send('subagent_status', { agentId, agentName, status: 'completed', phase });
           this.log(`✅ ${agentName} completed`, 'subagent_complete');

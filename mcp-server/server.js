@@ -218,10 +218,10 @@ app.post('/agents/reload', (req, res) => { AGENTS = loadAgents(); res.json({ mes
 // Projects
 app.get('/projects', (req, res) => res.json(listProjects()));
 app.post('/projects', (req, res) => {
-  const { name, client, type, system, description } = req.body;
+  const { name, client, type, system, description, workstream, processName } = req.body;
   if (!name) return res.status(400).json({ error: 'Project name required' });
   const id = name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now();
-  const project = { id, name, client, type, system, description, documents: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  const project = { id, name, client, type, system, description, workstream, processName, documents: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
   saveProject(project);
   res.json(project);
 });
@@ -366,7 +366,17 @@ app.get('/orchestrate', async (req, res) => {
   const claudePath = process.env.CLAUDE_PATH;
   if (!gitBash || !claudePath) { send('error', 'Claude not configured'); res.end(); return; }
 
-  const orch = new Orchestrator(send, projectId, gitBash, claudePath);
+  // Update project with workstream and processName from formData
+  if (projectId && formData) {
+    const proj = loadProject(projectId);
+    if (proj) {
+      if (formData.workstream) proj.workstream = formData.workstream;
+      if (formData.processName) proj.processName = formData.processName;
+      if (formData.client) proj.client = formData.client;
+      saveProject(proj);
+    }
+  }
+  const orch = new Orchestrator(send, projectId, gitBash, claudePath, formData);
 
   try {
     // Step 1 — Read architect prompt
