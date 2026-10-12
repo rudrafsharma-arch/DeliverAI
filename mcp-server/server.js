@@ -370,7 +370,8 @@ app.get('/orchestrate', async (req, res) => {
   if (projectId && formData) {
     const proj = loadProject(projectId);
     if (proj) {
-      if (formData.workstream) proj.workstream = formData.workstream;
+      const ws = formData.workstream === 'Other' ? (formData.customWorkstream || formData.workstream) : formData.workstream;
+      if (ws) proj.workstream = ws;
       if (formData.processName) proj.processName = formData.processName;
       if (formData.client) proj.client = formData.client;
       saveProject(proj);

@@ -26,7 +26,8 @@ function saveDocumentToProject(projectId, agentId, agentName, output, formData) 
   }
 
   const client = sanitize((project && project.client) || (formData && formData.client) || 'Unknown-Client');
-  const workstream = sanitize((project && project.workstream) || (formData && formData.workstream) || 'General');
+  const rawWs = (project && project.workstream) || (formData && (formData.workstream === 'Other' ? formData.customWorkstream : formData.workstream)) || 'General';
+  const workstream = sanitize(rawWs);
   const processName = sanitize((project && project.processName) || (formData && formData.processName) || (project && project.name) || 'Process');
 
   const processDir = path.join(PROJECTS_DIR, projectId, workstream, processName);
