@@ -84,8 +84,8 @@ class Orchestrator {
         delete this.runningAgents[agentId];
         if (code === 0 && output.length > 100) {
           this.completedAgents[agentId] = output;
-          saveDocumentToProject(this.projectId, agentId, agentName, output);
-          try { this.send('subagent_document', { agentId, agentName, projectId: this.projectId }); } catch(e) { console.error('send error:', e.message); }
+          const savedFileName = saveDocumentToProject(this.projectId, agentId, agentName, output);
+          try { const pj=require('path').join(__dirname,'../projects',this.projectId,'project.json'); let fp=savedFileName; try{ const docs=JSON.parse(require('fs').readFileSync(pj,'utf8')).documents||[]; const last=docs[docs.length-1]; if(last) fp=last.filePath||savedFileName; }catch(e){} this.send('subagent_document', { agentId, agentName, projectId: this.projectId, fileName: savedFileName, filePath: fp }); } catch(e) { console.error('send error:', e.message); }
           this.send('subagent_status', { agentId, agentName, status: 'completed', phase });
           this.log(`✅ ${agentName} completed`, 'subagent_complete');
           resolve(output);
