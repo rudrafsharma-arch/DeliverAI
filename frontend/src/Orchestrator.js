@@ -408,9 +408,6 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
         )}
       </div>
       <style>{`@keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }`}</style>
-    </div>
-  );
-}
         {/* Viewing subagent doc */}
         {viewingDoc && (
           <div style={{ width: 420, borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
@@ -425,3 +422,7 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
           </div>
         )}
 
+
+    </div>
+  );
+}
