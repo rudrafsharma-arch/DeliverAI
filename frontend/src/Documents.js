@@ -18,7 +18,7 @@ export default function Documents({ projects }) {
     try {
       await fetch('http://localhost:3002/documents/' + selectedProject.id + '/status', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: doc.fileName, status, reviewer: reviewerName || 'Reviewer', comment })
+        body: JSON.stringify({ fileName: doc.fileName, filePath: doc.filePath, status, reviewer: reviewerName || 'Reviewer', comment })
       });
       const updated = await fetch('/api/projects').then(r => r.json());
       const proj = updated.find(p => p.id === selectedProject.id);

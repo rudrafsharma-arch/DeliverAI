@@ -507,13 +507,13 @@ Now analyse and deliver.`;
 // Update document status (approval workflow)
 app.put('/documents/:projectId/status', (req, res) => {
   const { projectId } = req.params;
-  const { fileName, status, reviewer, comment } = req.body;
+  const { fileName, filePath, status, reviewer, comment } = req.body;
   const validStatuses = ['DRAFT','IN_REVIEW','APPROVED','CHANGES_REQUESTED'];
   if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
   const projFile = path.join(getProjectDir(projectId), 'project.json');
   if (!fs.existsSync(projFile)) return res.status(404).json({ error: 'Project not found' });
   const project = JSON.parse(fs.readFileSync(projFile, 'utf8'));
-  const doc = (project.documents || []).find(d => d.fileName === fileName);
+  const doc = (project.documents || []).find(d => filePath ? d.filePath === filePath : d.fileName === fileName);
   if (!doc) return res.status(404).json({ error: 'Document not found' });
   doc.status = status;
   doc.reviewer = reviewer || '';
