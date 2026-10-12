@@ -85,7 +85,8 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
       });
     }
     setStep('running');
-    onStart({ ...formData, agentPlan: JSON.stringify(finalAgents) }, selectedProject);
+    const resolvedWorkstream = formData.workstream === 'Other' ? (formData.customWorkstream || 'Other') : formData.workstream;
+    onStart({ ...formData, workstream: resolvedWorkstream, agentPlan: JSON.stringify(finalAgents) }, selectedProject);
   };
 
   const toggleAgent = (agentId) => {
