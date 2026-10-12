@@ -125,7 +125,7 @@ export default function Review({ projects }) {
           </div>
           <span style={{ fontSize:11, fontWeight:700, color: STATUS_COLORS[doc.status], background: STATUS_COLORS[doc.status]+'20', padding:'3px 10px', borderRadius:10, whiteSpace:'nowrap' }}>{STATUS_LABELS[doc.status]}</span>
           <button onClick={() => openDoc(doc)} style={{ padding:'6px 14px', borderRadius:6, border:'none', background:'#1e40af', color:'#fff', cursor:'pointer', fontSize:12, fontWeight:600, whiteSpace:'nowrap' }}>Review</button>
-          {doc.status === 'CHANGES_REQUESTED' && (
+          {doc.status === 'CHANGES_REQUESTED' && doc.agentId !== 'architect' && (
             <button disabled={regenerating===doc.fileName} onClick={() => regenerate(doc)} style={{ padding:'6px 14px', borderRadius:6, border:'1px solid #7c3aed', background: regenerating===doc.fileName ? '#7c3aed' : '#fff', color: regenerating===doc.fileName ? '#fff' : '#7c3aed', cursor:'pointer', fontSize:12, whiteSpace:'nowrap' }}>
               {regenerating===doc.fileName ? 'Regenerating...' : 'Regenerate'}
             </button>
