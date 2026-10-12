@@ -709,6 +709,8 @@ export default function App() {
       <div style={{ display:'flex', flex:1, maxWidth:1400, margin:'0 auto', width:'100%', padding:16, gap:14 }}>
         {view === 'activity' ? (
           <div style={{ flex:1 }}><Activity onChainAgent={handleChainAgent} projects={projects} /></div>
+        ) : view === 'documents' ? (
+          <div style={{ flex:1, display:'flex' }}><Documents projects={projects} /></div>
         ) : view === 'settings' ? (
           <div style={{ flex:1 }}><Settings /></div>
         ) : (
