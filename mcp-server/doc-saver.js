@@ -40,7 +40,7 @@ function saveDocumentToProject(projectId, agentId, agentName, output, formData) 
 
   if (fs.existsSync(projFile)) {
     project.documents = project.documents || [];
-    project.documents.push({
+    project.documents.push({ status: 'success',
       agentId: agentId,
       agentName: agentName,
       fileName: fileName,

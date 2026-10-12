@@ -20,12 +20,24 @@ function parseIntent(message) {
   const lower = message.toLowerCase();
   const result = { agents: [], projectName: '', processName: '', client: '', module: '', description: message, intent: 'general' };
 
-  // Detect delete intent FIRST - before agent detection
+  // Detect delete intent FIRST
   if (lower.includes('delete') || lower.includes('remove')) {
     result.intent = 'delete';
-    // Extract what to delete
-    const agentMatch = message.match(/delete.*?(blueprint|functional.?spec|technical.?spec|iflow|config|test.?script|architect|ricefw|abap|cap|incident)/i);
+    const agentMatch = message.match(/(blueprint|functional.?spec|technical.?spec|iflow|config|test.?script|architect|ricefw|abap|cap|incident)/i);
     if (agentMatch) result.deleteTarget = agentMatch[1].toLowerCase().replace(/[^a-z]/g,'');
+    if (lower.includes('fail') || lower.includes('error')) result.deleteFilter = 'failed';
+    if (lower.includes('all')) result.deleteAll = true;
+    const versionMatch = message.match(/v(\d+)|version\s*(\d+)/i);
+    if (versionMatch) result.deleteVersion = versionMatch[1] || versionMatch[2];
+    return result;
+  }
+
+  // Detect restart intent
+  if (lower.includes('restart') || lower.includes('rerun') || lower.includes('retry')) {
+    result.intent = 'restart';
+    const agentMatch = message.match(/(blueprint|functional.?spec|technical.?spec|iflow|config|test.?script|architect|ricefw|abap|cap|incident)/i);
+    if (agentMatch) result.restartTarget = agentMatch[1].toLowerCase().replace(/[^a-z]/g,'');
+    if (lower.includes('fail') || lower.includes('error')) result.restartFilter = 'failed';
     return result;
   }
 
@@ -126,37 +138,59 @@ export default function AIAssistant({ onClose, projects, onNavigate, hideHeader 
     if (intent.agents.length > 0) {
       // Handle delete intent
     if (intent.intent === 'delete') {
-      const target = intent.deleteTarget;
       const project = projects && projects[0];
-      if (!project) {
-        addMessage('assistant', 'No project selected. Please select a project first.', 'text');
+      if (!project) { addMessage('assistant', 'No project selected.', 'text'); setLoading(false); return; }
+      let docs = project.documents || [];
+
+      // Filter by agent/target
+      if (intent.deleteTarget) docs = docs.filter(d => (d.agentId||'').includes(intent.deleteTarget) || (d.agentName||'').toLowerCase().includes(intent.deleteTarget));
+      // Filter by status (failed/error)
+      if (intent.deleteFilter === 'failed') docs = docs.filter(d => d.status === 'failed' || !d.fileName);
+      // Filter by version
+      if (intent.deleteVersion) docs = docs.filter(d => d.version === intent.deleteVersion || (d.fileName||'').includes('_v'+intent.deleteVersion+'.'));
+      // If no filter specified and no target, ask for clarification
+      if (docs.length === 0) {
+        addMessage('assistant', 'No documents found matching your criteria. Try being more specific e.g. "delete failed blueprint" or "delete blueprint v2". You can also use the Documents tab to delete manually.', 'text');
         setLoading(false);
         return;
       }
-      const docs = project.documents || [];
-      const toDelete = target ? docs.filter(d => (d.agentId || '').includes(target) || (d.agentName || '').toLowerCase().includes(target)) : [];
-      if (toDelete.length === 0) {
-        addMessage('assistant', 'Could not find documents matching "' + (target || 'unknown') + '" in project ' + project.name + '. Please go to the Documents tab to delete manually.', 'text');
-        setLoading(false);
-        return;
-      }
-      // Delete each matching doc
+      // Confirm if deleting multiple
+      const names = docs.map(d => d.fileName || d.agentName).join(', ');
+      addMessage('assistant', 'Deleting ' + docs.length + ' document(s): ' + names, 'text');
       let deleted = 0;
-      const deleteNext = async (idx) => {
-        if (idx >= toDelete.length) {
-          addMessage('assistant', 'Deleted ' + deleted + ' document(s): ' + toDelete.map(d => d.fileName).join(', '), 'text');
-          setLoading(false);
-          return;
-        }
-        const doc = toDelete[idx];
-        const fp = encodeURIComponent(doc.filePath || doc.fileName);
+      for (const doc of docs) {
+        if (!doc.fileName) { deleted++; continue; } // failed doc with no file
         try {
+          const fp = encodeURIComponent(doc.filePath || doc.fileName);
           await fetch('http://localhost:3002/documents/' + project.id + '/' + fp, { method: 'DELETE' });
           deleted++;
         } catch(e) {}
-        deleteNext(idx + 1);
-      };
-      deleteNext(0);
+      }
+      addMessage('assistant', 'Done. Deleted ' + deleted + ' document(s). Go to Documents tab to verify.', 'text');
+      setLoading(false);
+      return;
+    }
+
+    // Handle restart intent
+    if (intent.intent === 'restart') {
+      const project = projects && projects[0];
+      if (!project) { addMessage('assistant', 'No project selected.', 'text'); setLoading(false); return; }
+      let docs = project.documents || [];
+      if (intent.restartFilter === 'failed') docs = docs.filter(d => d.status === 'failed' || !d.fileName);
+      if (intent.restartTarget) docs = docs.filter(d => (d.agentId||'').includes(intent.restartTarget) || (d.agentName||'').toLowerCase().includes(intent.restartTarget));
+      if (docs.length === 0) {
+        addMessage('assistant', 'No failed documents found to restart. All agents completed successfully!', 'text');
+        setLoading(false);
+        return;
+      }
+      const agentsToRestart = [...new Set(docs.map(d => d.agentId))].filter(Boolean);
+      addMessage('assistant', 'Restarting ' + agentsToRestart.length + ' agent(s): ' + agentsToRestart.join(', '), 'text');
+      agentsToRestart.forEach(agentId => {
+        const formData = { projectName: project.name, client: project.client || '', workstream: project.workstream || '', processName: project.processName || '', requirement: 'Retry failed generation' };
+        startJob(agentId, agentId, project.id, formData);
+      });
+      addMessage('assistant', 'Agents restarted! Check the Activity tab for progress.', 'text');
+      setLoading(false);
       return;
     }
 

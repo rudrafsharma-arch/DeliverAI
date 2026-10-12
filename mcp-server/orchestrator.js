@@ -92,6 +92,19 @@ class Orchestrator {
           resolve(output);
         } else {
           this.failedAgents[agentId] = errorOutput || 'Unknown error';
+          // Save failed status to project.json
+          try {
+            const path2 = require('path');
+            const fs2 = require('fs');
+            const projFile = path2.join(__dirname, '../projects', this.projectId, 'project.json');
+            if (fs2.existsSync(projFile)) {
+              const proj = JSON.parse(fs2.readFileSync(projFile, 'utf8'));
+              proj.documents = proj.documents || [];
+              proj.documents.push({ agentId, agentName, fileName: null, status: 'failed', error: (errorOutput||'').substring(0,200), generatedAt: new Date().toISOString() });
+              proj.updatedAt = new Date().toISOString();
+              fs2.writeFileSync(projFile, JSON.stringify(proj, null, 2), 'utf8');
+            }
+          } catch(e) {}
           this.send('subagent_status', { agentId, agentName, status: 'failed', phase });
           this.log(`❌ ${agentName} failed`, 'subagent_failed');
           reject(new Error(`${agentName} failed: ${errorOutput}`));
