@@ -503,6 +503,14 @@ Now analyse and deliver.`;
 // ─────────────────────────────────────────────────────────────────────────────
 
 
+// Cleanup stale processes
+app.post('/cleanup', (req, res) => {
+  require('child_process').exec('taskkill /F /IM claude.exe 2>nul & taskkill /F /IM bash.exe 2>nul', (err, stdout) => {
+    console.log('[Cleanup] Stale processes killed');
+    res.json({ success: true, output: stdout });
+  });
+});
+
 // Delete document
 app.delete('/documents/:projectId/*', (req, res) => {
   const projectId = req.params.projectId;

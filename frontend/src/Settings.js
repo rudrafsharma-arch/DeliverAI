@@ -212,6 +212,7 @@ export default function Settings(){
           <button onClick={()=>handleTest('github')} disabled={testing.github} style={{width:'100%',padding:'7px',borderRadius:8,border:'1px solid #e2e8f0',background:'#f8fafc',cursor:'pointer',fontSize:12,marginBottom:6}}>{testing.github?'Testing...':'Test GitHub'}</button>
           <button onClick={()=>handleTest('btp')} disabled={testing.btp} style={{width:'100%',padding:'7px',borderRadius:8,border:'1px solid #e2e8f0',background:'#f8fafc',cursor:'pointer',fontSize:12,marginBottom:6}}>{testing.btp?'Testing...':'Test BTP'}</button>
           <button onClick={handleInstall} disabled={installing} style={{width:'100%',padding:'7px',borderRadius:8,border:'none',background:BLUE,color:'#fff',cursor:'pointer',fontSize:12,fontWeight:600}}>{installing?'Installing...':'Install Dependencies'}</button>
+          <button onClick={()=>fetch('http://localhost:3002/cleanup',{method:'POST'}).then(()=>alert('Stale processes cleaned up!'))} style={{width:'100%',padding:'7px',borderRadius:8,border:'1px solid #dc2626',background:'#fff',color:'#dc2626',cursor:'pointer',fontSize:12,marginTop:6}}>Kill Stale Processes</button>
         </div>
         <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:12}}>
           <div style={{fontWeight:600,fontSize:12,marginBottom:8}}>System Info</div>
