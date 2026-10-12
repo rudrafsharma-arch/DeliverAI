@@ -310,7 +310,7 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
                             if (!docs.length) { alert('Document not saved yet for ' + agent.name); return; }
                             const latest = docs[docs.length - 1];
                             const fp = latest.filePath || latest.fileName;
-                            fetch('http://localhost:3002/download/' + selectedProject + '/' + fp)
+                            fetch('http://localhost:3002/download/' + selectedProject + '/' + fp.replace(selectedProject + '/', ''))
                               .then(r => r.text())
                               .then(html => setViewingDoc({ agentId: agent.id, agentName: agent.name, fileName: latest.fileName, html }))
                               .catch(e => alert('Could not load: ' + e.message));

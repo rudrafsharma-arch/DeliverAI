@@ -44,7 +44,7 @@ function saveDocumentToProject(projectId, agentId, agentName, output, formData) 
       agentId: agentId,
       agentName: agentName,
       fileName: fileName,
-      filePath: path.join(projectId, client, workstream, processName, fileName).replace(/\\/g, '/'),
+      filePath: path.join(client, workstream, processName, fileName).replace(/\\/g, '/'),
       version: version.toString(),
       generatedAt: new Date().toISOString()
     });

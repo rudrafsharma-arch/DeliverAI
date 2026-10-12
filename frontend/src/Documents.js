@@ -50,7 +50,7 @@ export default function Documents({ projects }) {
 
   const openDoc = (doc) => {
     const fp = doc.filePath || doc.fileName;
-    fetch('http://localhost:3002/download/' + selectedProject.id + '/' + fp)
+    fetch('http://localhost:3002/download/' + selectedProject.id + '/' + fp.replace(selectedProject.id + '/', ''))
       .then(r => r.text())
       .then(html => setViewingDoc({ ...doc, html }))
       .catch(() => alert('Could not load document'));
