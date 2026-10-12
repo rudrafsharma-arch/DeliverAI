@@ -476,7 +476,7 @@ Now analyse and deliver.`;
           if (!agentManifest) return null;
           const agentPromptPath = path.join(__dirname, '..', 'agents', a.id, 'prompt.md');
           const agentPrompt = fs.existsSync(agentPromptPath) ? fs.readFileSync(agentPromptPath, 'utf8') : '';
-          const subPrompt = `${agentPrompt}\n\n## ARCHITECT CONTEXT\n${context}\n\n## PROJECT\nProject: ${formData.projectName}\nClient: ${formData.client}\nRequirement: ${formData.requirement}\n\nGenerate the complete document now.`;
+          const subPrompt = `${agentPrompt}\n\n## ARCHITECT CONTEXT\n${context}\n\n## PROJECT DETAILS\nProject: ${formData.projectName || ''}\nClient: ${formData.client || ''}\nBusiness Unit: ${formData.businessUnit || ''}\nIndustry: ${formData.industry || ''}\nWorkstream: ${formData.workstream || ''}\nProcess Name: ${formData.processName || ''}\nSystem Landscape: ${formData.systemLandscape || ''}\nRequirement: ${formData.requirement || ''}\nExisting Licenses: ${formData.existingLicenses || ''}\nBudget: ${formData.budget || ''}\nTimeline: ${formData.timeline || ''}\nVersion: ${formData.version || '1.0'}\n\nGenerate the complete document now. Make it detailed, specific to this client and process. Minimum 50KB of content.`;
           return { id: a.id, name: a.name, prompt: subPrompt };
         }).filter(Boolean);
 

@@ -72,6 +72,29 @@ export default function Documents({ projects }) {
 
   const toggleFolder = (key) => setExpandedFolders(e => ({ ...e, [key]: !e[key] }));
 
+  const deleteFolder = async (workstream, process) => {
+    if (!window.confirm('Delete all documents in ' + workstream + (process ? ' / ' + process : '') + '? This cannot be undone.')) return;
+    const proj = selectedProject;
+    const docsToDelete = (proj.documents || []).filter(d => {
+      const fp = (d.filePath || d.fileName);
+      const clean = fp.startsWith(proj.id + '/') ? fp.slice(proj.id.length + 1) : fp;
+      const parts = clean.split('/');
+      const WORKSTREAMS = ['OTC','P2P','MFG','RTR','HCM','SCM','FI','MM','SD','HR','EWM','TM'];
+      const wsIdx = parts.findIndex(p => WORKSTREAMS.includes(p.toUpperCase()));
+      const docWs = wsIdx >= 0 ? parts[wsIdx].toUpperCase() : '_archive';
+      const docProc = wsIdx >= 0 ? parts[wsIdx+1] : parts[0];
+      if (process) return docWs === workstream && docProc === process;
+      return docWs === workstream;
+    });
+    for (const doc of docsToDelete) {
+      const fp = encodeURIComponent(doc.filePath || doc.fileName);
+      try { await fetch('http://localhost:3002/documents/' + proj.id + '/' + fp, { method: 'DELETE' }); } catch(e) {}
+    }
+    const updated = await fetch('/api/projects').then(r => r.json());
+    const p = updated.find(p => p.id === proj.id);
+    if (p) { setSelectedProject(p); buildFolderTree(p); }
+  };
+
   const folderLabel = (key) => {
     if (key === '_root') return '🗄️ Archive (old flat files)';
     const parts = key.split('/');
@@ -148,6 +171,7 @@ export default function Documents({ projects }) {
                           <span>{expandedFolders[procKey] ? '▼' : '▶'}</span>
                           <span>📂 {process}</span>
                           <span style={{ fontSize:10, color:'#94a3b8', fontWeight:400 }}>({docs.length} files)</span>
+                          <button onClick={(e) => { e.stopPropagation(); deleteFolder(workstream, process); }} style={{ marginLeft:'auto', padding:'2px 8px', borderRadius:4, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:10 }}>Delete Folder</button>
                         </div>
                         {expandedFolders[procKey] && docs.map((doc, i) => (
                           <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', borderRadius:6, marginBottom:3, marginLeft:16, marginTop:3, background:'#fff', border:'1px solid #e2e8f0' }}>
