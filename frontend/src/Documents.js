@@ -1,9 +1,12 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 
 export default function Documents({ projects }) {
   const [selectedProject, setSelectedProject] = useState(null);
   const [folderTree, setFolderTree] = useState({});
   const [viewingDoc, setViewingDoc] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editedHtml, setEditedHtml] = useState('');
+  const editorRef = useRef(null);
   const [expandedFolders, setExpandedFolders] = useState({});
   const [deleting, setDeleting] = useState(null);
   const [approvalModal, setApprovalModal] = useState(null);
@@ -132,7 +135,7 @@ export default function Documents({ projects }) {
           <button onClick={() => { const w=window.open('','_blank');w.document.write(viewingDoc.html);w.document.close(); }} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:12 }}>⛶ Full Screen</button>
           <button onClick={() => { const b=new Blob([viewingDoc.html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=viewingDoc.fileName;a.click(); }} style={{ padding:'4px 12px', borderRadius:6, border:'none', background:'#1e40af', color:'#fff', cursor:'pointer', fontSize:12 }}>Download</button>
         </div>
-        <iframe srcDoc={viewingDoc.html} style={{ flex:1, border:'none' }} title={viewingDoc.agentName} />
+        editMode ? (<div ref={editorRef} contentEditable suppressContentEditableWarning dangerouslySetInnerHTML={{__html: viewingDoc.html}} style={{ flex:1, overflow:'auto', padding:24, outline:'2px solid #1e40af', background:'#fff' }} />) : (<iframe srcDoc={viewingDoc.html} style={{ flex:1, border:'none' }} title={viewingDoc.agentName} />)
       </div>
     );
   }

@@ -524,6 +524,15 @@ app.put('/documents/:projectId/status', (req, res) => {
   console.log('[Approval] ' + fileName + ' -> ' + status);
   res.json({ success: true, doc });
 });
+app.post('/save-document', (req, res) => {
+  const { projectId, filePath, html } = req.body;
+  if (!projectId || !filePath || !html) return res.status(400).json({ error: 'Missing fields' });
+  const fullPath = path.join(getProjectDir(projectId), filePath.replace(projectId + '/', ''));
+  if (!fs.existsSync(path.dirname(fullPath))) return res.status(404).json({ error: 'Path not found' });
+  fs.writeFileSync(fullPath, html, 'utf8');
+  console.log('[Save] Document updated:', fullPath);
+  res.json({ success: true });
+});
 // Cleanup stale processes
 app.post('/cleanup', (req, res) => {
   require('child_process').exec('taskkill /F /IM claude.exe 2>nul & taskkill /F /IM bash.exe 2>nul', (err, stdout) => {
