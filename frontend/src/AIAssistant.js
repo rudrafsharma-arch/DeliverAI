@@ -135,7 +135,7 @@ export default function AIAssistant({ onClose, projects, onNavigate, hideHeader 
 
     // Check for agent intent first
     const intent = parseIntent(userMessage);
-    if (intent.agents.length > 0) {
+    // Handle intents
       // Handle delete intent
     if (intent.intent === 'delete') {
       const project = projects && projects[0];
@@ -194,6 +194,7 @@ export default function AIAssistant({ onClose, projects, onNavigate, hideHeader 
       return;
     }
 
+    if (intent.agents.length > 0) {
     const triggered = triggerAgents(intent, userMessage);
       if (triggered) { setLoading(false); return; }
     }

@@ -7,8 +7,13 @@ export default function Documents({ projects }) {
   const [expandedFolders, setExpandedFolders] = useState({});
   const [deleting, setDeleting] = useState(null);
 
+  // Auto-refresh selected project every 30 seconds (for real-time updates during orchestration)
   useEffect(() => {
     if (projects.length > 0 && !selectedProject) setSelectedProject(projects[0]);
+    else if (selectedProject) {
+      const updated = projects.find(p => p.id === selectedProject.id);
+      if (updated) { setSelectedProject(updated); buildFolderTree(updated); }
+    }
   }, [projects]);
 
   useEffect(() => {
