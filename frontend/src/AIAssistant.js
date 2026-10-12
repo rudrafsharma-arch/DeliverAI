@@ -18,7 +18,16 @@ const AGENT_LIST = [
 
 function parseIntent(message) {
   const lower = message.toLowerCase();
-  const result = { agents: [], projectName: '', processName: '', client: '', module: '', description: message };
+  const result = { agents: [], projectName: '', processName: '', client: '', module: '', description: message, intent: 'general' };
+
+  // Detect delete intent FIRST - before agent detection
+  if (lower.includes('delete') || lower.includes('remove')) {
+    result.intent = 'delete';
+    // Extract what to delete
+    const agentMatch = message.match(/delete.*?(blueprint|functional.?spec|technical.?spec|iflow|config|test.?script|architect|ricefw|abap|cap|incident)/i);
+    if (agentMatch) result.deleteTarget = agentMatch[1].toLowerCase().replace(/[^a-z]/g,'');
+    return result;
+  }
 
   // Detect agents
   AGENT_LIST.forEach(agent => {
@@ -115,7 +124,43 @@ export default function AIAssistant({ onClose, projects, onNavigate, hideHeader 
     // Check for agent intent first
     const intent = parseIntent(userMessage);
     if (intent.agents.length > 0) {
-      const triggered = triggerAgents(intent, userMessage);
+      // Handle delete intent
+    if (intent.intent === 'delete') {
+      const target = intent.deleteTarget;
+      const project = projects && projects[0];
+      if (!project) {
+        addMessage('assistant', 'No project selected. Please select a project first.', 'text');
+        setLoading(false);
+        return;
+      }
+      const docs = project.documents || [];
+      const toDelete = target ? docs.filter(d => (d.agentId || '').includes(target) || (d.agentName || '').toLowerCase().includes(target)) : [];
+      if (toDelete.length === 0) {
+        addMessage('assistant', 'Could not find documents matching "' + (target || 'unknown') + '" in project ' + project.name + '. Please go to the Documents tab to delete manually.', 'text');
+        setLoading(false);
+        return;
+      }
+      // Delete each matching doc
+      let deleted = 0;
+      const deleteNext = async (idx) => {
+        if (idx >= toDelete.length) {
+          addMessage('assistant', 'Deleted ' + deleted + ' document(s): ' + toDelete.map(d => d.fileName).join(', '), 'text');
+          setLoading(false);
+          return;
+        }
+        const doc = toDelete[idx];
+        const fp = encodeURIComponent(doc.filePath || doc.fileName);
+        try {
+          await fetch('http://localhost:3002/documents/' + project.id + '/' + fp, { method: 'DELETE' });
+          deleted++;
+        } catch(e) {}
+        deleteNext(idx + 1);
+      };
+      deleteNext(0);
+      return;
+    }
+
+    const triggered = triggerAgents(intent, userMessage);
       if (triggered) { setLoading(false); return; }
     }
 
