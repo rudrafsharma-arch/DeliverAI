@@ -492,7 +492,7 @@ Now analyse and deliver.`;
     res.end();
 
   } catch(e) {
-    send('error', `Orchestration failed: ${e.message}`);
+    send('error', 'Orchestration failed: ' + (e.message || JSON.stringify(e)));
     orch.killAll();
     res.end();
   }

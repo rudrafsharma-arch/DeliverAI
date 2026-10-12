@@ -129,3 +129,9 @@ All assignment and sign-off fields must use HTML inputs — never static text li
 - Text: <input type="text" placeholder="Enter name" style="border:none;border-bottom:1px solid #ccc;width:150px;font-size:12px;background:transparent;">
 - Date: <input type="date" style="border:none;border-bottom:1px solid #ccc;font-size:12px;background:transparent;">
 - Status: <select style="border:none;border-bottom:1px solid #ccc;font-size:12px;background:transparent;"><option>Pending</option><option>Approved</option><option>Rejected</option></select>
+
+
+## TABLE OF CONTENTS - MANDATORY
+- Always include a clickable Table of Contents after the document header
+- Use anchor links to each section
+- Every section must have an id attribute matching the TOC link

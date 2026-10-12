@@ -74,3 +74,9 @@ No markdown. No explanation. Just raw HTML.
 - Include specific SAP transaction codes, table names, API names where relevant
 - Include realistic data volumes, timelines, and business metrics
 - The document should read like it was written by a 20-year SAP consultant who knows this client deeply
+
+
+## TABLE OF CONTENTS - MANDATORY
+- Always include a clickable Table of Contents after the document header
+- Use anchor links to each section
+- Every section must have an id attribute matching the TOC link
