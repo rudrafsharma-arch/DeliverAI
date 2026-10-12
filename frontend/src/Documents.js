@@ -101,8 +101,8 @@ export default function Documents({ projects }) {
 
   const toggleFolder = (key) => setExpandedFolders(e => ({ ...e, [key]: !e[key] }));
 
-  const deleteFolder = async (workstream, process) => {
-    if (!window.confirm('Delete all documents in ' + workstream + (process ? ' / ' + process : '') + '? This cannot be undone.')) return;
+  const deleteFolder = async (workstream, procName) => {
+    if (!window.confirm('Delete all documents in ' + workstream + (procName ? ' / ' + procName : '') + '? This cannot be undone.')) return;
     const proj = selectedProject;
     const docsToDelete = (proj.documents || []).filter(d => {
       const fp = (d.filePath || d.fileName);
@@ -112,7 +112,7 @@ export default function Documents({ projects }) {
       // Direct match: workstream is first folder, process is second
       const docWs = parts[0] || '';
       const docProc = parts[1] || '';
-      if (process) return docWs === workstream && docProc === process;
+      if (procName) return docWs === workstream && docProc === procName;
       return docWs === workstream;
     });
     for (const doc of docsToDelete) {
@@ -213,7 +213,7 @@ export default function Documents({ projects }) {
                           <span>{expandedFolders[procKey] ? '▼' : '▶'}</span>
                           <span>📂 {process}</span>
                           <span style={{ fontSize:10, color:'#94a3b8', fontWeight:400 }}>({docs.length} files)</span>
-                          <button onClick={(e) => { e.stopPropagation(); deleteFolder(workstream, process); }} style={{ marginLeft:'auto', padding:'2px 8px', borderRadius:4, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:10 }}>Delete Folder</button>
+                          <button onClick={(e) => { e.stopPropagation(); deleteFolder(workstream, procName); }} style={{ marginLeft:'auto', padding:'2px 8px', borderRadius:4, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:10 }}>Delete Folder</button>
                         </div>
                         {expandedFolders[procKey] && docs.map((doc, i) => (
                           <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', borderRadius:6, marginBottom:3, marginLeft:16, marginTop:3, background:'#fff', border:'1px solid #e2e8f0' }}>
