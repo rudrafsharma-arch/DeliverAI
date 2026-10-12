@@ -65,6 +65,14 @@ export default function Documents({ projects }) {
         tree[workstream][process].push({ ...doc, cleanFp });
       }
     });
+    // Sort each process folder: newest version first
+    Object.keys(tree).forEach(ws => Object.keys(tree[ws]).forEach(proc => {
+      tree[ws][proc].sort((a,b) => {
+        const vA = parseInt((a.fileName||'').match(/v(\d+)/)?.[1]||0);
+        const vB = parseInt((b.fileName||'').match(/v(\d+)/)?.[1]||0);
+        return vB - vA;
+      });
+    }));
     setFolderTree(tree);
     const first = Object.keys(tree).find(k => k !== '_archive');
     if (first) setExpandedFolders({ ['ws_' + first]: true });

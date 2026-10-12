@@ -555,10 +555,11 @@ app.post('/rerun-agent', async (req, res) => {
     proc.on('close', (code) => {
       if (code === 0 && output.length > 100) {
         const { saveDocumentToProject } = require('./doc-saver');
-        saveDocumentToProject(projectId, agentId, agentName, output, proj);
-        console.log('[Rerun] ' + agentName + ' regenerated for ' + projectId);
-      } else {
-        console.error('[Rerun] Failed, code:', code);
+        const fpParts = (filePath || '').split('/');
+        const ws = fpParts.length >= 3 ? fpParts[fpParts.length-3] : (proj.workstream || 'General');
+        const proc2 = fpParts.length >= 2 ? fpParts[fpParts.length-2] : (proj.processName || 'Process');
+        saveDocumentToProject(projectId, agentId, agentName, output, { ...proj, workstream: ws, processName: proc2 });
+        console.log('[Rerun] ' + agentName + ' regenerated -> ' + ws + '/' + proc2);
       }
     });
     res.json({ success: true });
