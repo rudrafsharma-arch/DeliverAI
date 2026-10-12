@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 
 export default function Documents({ projects }) {
   const [selectedProject, setSelectedProject] = useState(null);
@@ -6,6 +6,23 @@ export default function Documents({ projects }) {
   const [viewingDoc, setViewingDoc] = useState(null);
   const [expandedFolders, setExpandedFolders] = useState({});
   const [deleting, setDeleting] = useState(null);
+  const [approvalModal, setApprovalModal] = useState(null);
+  const [reviewerName, setReviewerName] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const statusColors = { success:'#94a3b8',DRAFT:'#94a3b8',IN_REVIEW:'#f59e0b',APPROVED:'#16a34a',CHANGES_REQUESTED:'#dc2626',failed:'#dc2626' };
+  const statusLabels = { success:'DRAFT',DRAFT:'DRAFT',IN_REVIEW:'IN REVIEW',APPROVED:'APPROVED',CHANGES_REQUESTED:'CHANGES REQ.',failed:'FAILED' };
+  const updateStatus = async (doc, status, comment) => {
+    try {
+      await fetch('http://localhost:3002/documents/' + selectedProject.id + '/status', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: doc.fileName, status, reviewer: reviewerName || 'Reviewer', comment })
+      });
+      const updated = await fetch('/api/projects').then(r => r.json());
+      const proj = updated.find(p => p.id === selectedProject.id);
+      if (proj) { setSelectedProject(proj); buildFolderTree(proj); }
+      setApprovalModal(null); setReviewComment('');
+    } catch(e) { alert('Failed: ' + e.message); }
+  };
 
   // Auto-refresh selected project every 30 seconds (for real-time updates during orchestration)
   useEffect(() => {
@@ -120,7 +137,7 @@ export default function Documents({ projects }) {
     );
   }
 
-  return (
+  return (<>
     <div style={{ flex:1, display:'flex', gap:16, padding:16, height:'calc(100vh - 80px)', overflow:'hidden' }}>
       <div style={{ width:220, flexShrink:0, overflowY:'auto' }}>
         <div style={{ fontSize:11, fontWeight:700, color:'#64748b', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.05em' }}>Projects</div>
@@ -177,7 +194,9 @@ export default function Documents({ projects }) {
                           <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', borderRadius:6, marginBottom:3, marginLeft:16, marginTop:3, background:'#fff', border:'1px solid #e2e8f0' }}>
                             <span style={{ fontSize:14 }}>📄</span>
                             <div style={{ flex:1 }}><div style={{ fontSize:12, fontWeight:500 }}>{doc.agentName||doc.agentId}</div><div style={{ fontSize:10, color:'#94a3b8' }}>{doc.fileName} · {doc.generatedAt ? new Date(doc.generatedAt).toLocaleString() : ''}</div></div>
+                            <span style={{ fontSize:10, fontWeight:700, color:statusColors[doc.status]||'#94a3b8', background:(statusColors[doc.status]||'#94a3b8')+'20', padding:'2px 6px', borderRadius:10 }}>{statusLabels[doc.status]||'DRAFT'}</span>
                             <button onClick={() => openDoc(doc)} style={{ padding:'3px 8px', borderRadius:5, border:'none', background:'#1e40af', color:'#fff', cursor:'pointer', fontSize:11 }}>Open</button>
+                            {doc.status !== 'APPROVED' && <button onClick={() => setApprovalModal({doc, projectId: selectedProject.id})} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #f59e0b', background:'#fff', color:'#f59e0b', cursor:'pointer', fontSize:11 }}>Review</button>}
                             <button onClick={() => deleteDoc(doc)} disabled={deleting===doc.fileName} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:11 }}>{deleting===doc.fileName?'...':'Delete'}</button>
                           </div>
                         ))}
@@ -193,5 +212,24 @@ export default function Documents({ projects }) {
         )}
       </div>
     </div>
+      {approvalModal && (
+        <div style={{ position:fixed, top:0, left:0, right:0, bottom:0, background:rgba(0,0,0,0.5), display:flex, alignItems:center, justifyContent:center, zIndex:1000 }}>
+          <div style={{ background:'#fff', borderRadius:12, padding:24, width:480, boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ fontSize:16, fontWeight:700, marginBottom:4 }}>Review Document</div>
+            <div style={{ fontSize:12, color:'#64748b', marginBottom:16 }}>{approvalModal.doc.agentName} — {approvalModal.doc.fileName}</div>
+            <label style={{ fontSize:12, fontWeight:600 }}>Your Name</label>
+            <input value={reviewerName} onChange={e => setReviewerName(e.target.value)} placeholder="e.g. Vikram Sharma" style={{ width:'100%', padding:'8px', borderRadius:6, border:'1px solid #e2e8f0', marginBottom:12, fontSize:13, marginTop:4, boxSizing:'border-box' }} />
+            <label style={{ fontSize:12, fontWeight:600 }}>Comments</label>
+            <textarea value={reviewComment} onChange={e => setReviewComment(e.target.value)} placeholder="Add review comments..." style={{ width:'100%', padding:'8px', borderRadius:6, border:'1px solid #e2e8f0', marginBottom:16, fontSize:13, marginTop:4, height:80, resize:'vertical', boxSizing:'border-box' }} />
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button onClick={() => setApprovalModal(null)} style={{ padding:'8px 16px', borderRadius:6, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:13 }}>Cancel</button>
+              <button onClick={() => updateStatus(approvalModal.doc, 'IN_REVIEW', reviewComment)} style={{ padding:'8px 16px', borderRadius:6, border:'none', background:'#f59e0b', color:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>Send for Review</button>
+              <button onClick={() => updateStatus(approvalModal.doc, 'CHANGES_REQUESTED', reviewComment)} style={{ padding:'8px 16px', borderRadius:6, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>Request Changes</button>
+              <button onClick={() => updateStatus(approvalModal.doc, 'APPROVED', reviewComment)} style={{ padding:'8px 16px', borderRadius:6, border:'none', background:'#16a34a', color:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>✓ Approve</button>
+            </div>
+          </div>
+        </div>
+      )}
+  </>
   );
 }

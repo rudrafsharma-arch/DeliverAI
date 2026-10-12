@@ -503,6 +503,27 @@ Now analyse and deliver.`;
 // ─────────────────────────────────────────────────────────────────────────────
 
 
+
+// Update document status (approval workflow)
+app.put('/documents/:projectId/status', (req, res) => {
+  const { projectId } = req.params;
+  const { fileName, status, reviewer, comment } = req.body;
+  const validStatuses = ['DRAFT','IN_REVIEW','APPROVED','CHANGES_REQUESTED'];
+  if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  const projFile = path.join(getProjectDir(projectId), 'project.json');
+  if (!fs.existsSync(projFile)) return res.status(404).json({ error: 'Project not found' });
+  const project = JSON.parse(fs.readFileSync(projFile, 'utf8'));
+  const doc = (project.documents || []).find(d => d.fileName === fileName);
+  if (!doc) return res.status(404).json({ error: 'Document not found' });
+  doc.status = status;
+  doc.reviewer = reviewer || '';
+  doc.reviewedAt = new Date().toISOString();
+  if (comment) { doc.comments = doc.comments || []; doc.comments.push({ text: comment, by: reviewer, at: new Date().toISOString(), status }); }
+  project.updatedAt = new Date().toISOString();
+  fs.writeFileSync(projFile, JSON.stringify(project, null, 2), 'utf8');
+  console.log('[Approval] ' + fileName + ' -> ' + status);
+  res.json({ success: true, doc });
+});
 // Cleanup stale processes
 app.post('/cleanup', (req, res) => {
   require('child_process').exec('taskkill /F /IM claude.exe 2>nul & taskkill /F /IM bash.exe 2>nul', (err, stdout) => {
