@@ -130,12 +130,25 @@ export default function Documents({ projects }) {
     return (
       <div style={{ flex:1, display:'flex', flexDirection:'column', height:'calc(100vh - 60px)' }}>
         <div style={{ padding:'8px 16px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0', display:'flex', alignItems:'center', gap:8 }}>
-          <button onClick={() => setViewingDoc(null)} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12 }}>← Back</button>
+          <button onClick={() => { setViewingDoc(null); setEditMode(false); }} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12 }}>← Back</button>
           <span style={{ fontSize:13, fontWeight:600, flex:1 }}>{viewingDoc.agentName} — {viewingDoc.fileName}</span>
-          <button onClick={() => { const w=window.open('','_blank');w.document.write(viewingDoc.html);w.document.close(); }} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:12 }}>⛶ Full Screen</button>
-          <button onClick={() => { const b=new Blob([viewingDoc.html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=viewingDoc.fileName;a.click(); }} style={{ padding:'4px 12px', borderRadius:6, border:'none', background:'#1e40af', color:'#fff', cursor:'pointer', fontSize:12 }}>Download</button>
+          {editMode ? (
+            <>
+              <button onClick={() => { const html=editorRef.current.innerHTML; fetch('http://localhost:3002/save-document',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({projectId:selectedProject.id,filePath:viewingDoc.filePath||viewingDoc.fileName,html})}).then(()=>{setViewingDoc(v=>({...v,html}));setEditMode(false);alert('Saved!');}).catch(e=>alert('Save failed: '+e.message)); }} style={{ padding:'4px 12px', borderRadius:6, border:'none', background:'#16a34a', color:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Save</button>
+              <button onClick={() => setEditMode(false)} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12 }}>Cancel</button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setEditMode(true)} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid #1e40af', background:'#fff', color:'#1e40af', cursor:'pointer', fontSize:12 }}>Edit</button>
+              <button onClick={() => { const w=window.open('','_blank');w.document.write(viewingDoc.html);w.document.close(); }} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:12 }}>Full Screen</button>
+              <button onClick={() => { const b=new Blob([viewingDoc.html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=viewingDoc.fileName;a.click(); }} style={{ padding:'4px 12px', borderRadius:6, border:'none', background:'#1e40af', color:'#fff', cursor:'pointer', fontSize:12 }}>Download</button>
+            </>
+          )}
         </div>
-        {editMode ? (<div ref={editorRef} contentEditable suppressContentEditableWarning dangerouslySetInnerHTML={{__html: viewingDoc.html}} style={{ flex:1, overflow:'auto', padding:24, outline:'2px solid #1e40af', background:'#fff' }} />) : (<iframe srcDoc={viewingDoc.html} style={{ flex:1, border:'none' }} title={viewingDoc.agentName} />)}
+        {editMode
+          ? <div ref={editorRef} contentEditable suppressContentEditableWarning dangerouslySetInnerHTML={{__html: viewingDoc.html}} style={{ flex:1, overflow:'auto', padding:24, outline:'2px solid #1e40af', background:'#fff' }} />
+          : <iframe srcDoc={viewingDoc.html} style={{ flex:1, border:'none' }} title={viewingDoc.agentName} />
+        }
       </div>
     );
   }
