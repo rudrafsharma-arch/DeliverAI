@@ -29,7 +29,7 @@ function saveDocumentToProject(projectId, agentId, agentName, output, formData) 
   const workstream = sanitize((project && project.workstream) || (formData && formData.workstream) || 'General');
   const processName = sanitize((project && project.processName) || (formData && formData.processName) || (project && project.name) || 'Process');
 
-  const processDir = path.join(PROJECTS_DIR, projectId, client, workstream, processName);
+  const processDir = path.join(PROJECTS_DIR, projectId, workstream, processName);
   if (!fs.existsSync(processDir)) fs.mkdirSync(processDir, { recursive: true });
 
   const existing = fs.existsSync(processDir) ? fs.readdirSync(processDir).filter(function(f) { return f.startsWith(agentId); }) : [];
@@ -44,7 +44,7 @@ function saveDocumentToProject(projectId, agentId, agentName, output, formData) 
       agentId: agentId,
       agentName: agentName,
       fileName: fileName,
-      filePath: path.join(client, workstream, processName, fileName).replace(/\\/g, '/'),
+      filePath: path.join(workstream, processName, fileName).replace(/\\/g, '/'),
       version: version.toString(),
       generatedAt: new Date().toISOString()
     });

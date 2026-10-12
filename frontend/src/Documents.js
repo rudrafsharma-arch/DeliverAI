@@ -25,27 +25,28 @@ export default function Documents({ projects }) {
     (project.documents || []).forEach(doc => {
       const fp = doc.filePath || doc.fileName;
       if (!fp) return;
-      const parts = fp.split('/');
-      // parts[0] = projectId, parts[1] = client, parts[2] = workstream, parts[3] = process, parts[4] = filename
-      // OR parts[0] = filename (flat/root)
-      let key;
-      if (parts.length >= 4) {
-        // Has proper folder structure - use client/workstream/process
-        key = parts.slice(1, parts.length - 1).join('/');
+      const cleanFp = fp.startsWith(project.id + '/') ? fp.slice(project.id.length + 1) : fp;
+      const parts = cleanFp.split('/');
+      let workstream, process;
+      if (parts.length >= 3) {
+        workstream = parts[0] === project.client ? parts[1] : parts[0];
+        process = parts[0] === project.client ? parts[2] : parts[1];
+      } else if (parts.length === 2) {
+        workstream = '_archive';
+        process = parts[0];
       } else {
-        key = '_root';
+        workstream = '_archive';
+        process = '_root';
       }
-      if (!tree[key]) tree[key] = [];
-      // avoid duplicates
-      if (!tree[key].find(d => d.fileName === doc.fileName)) {
-        tree[key].push(doc);
+      if (!tree[workstream]) tree[workstream] = {};
+      if (!tree[workstream][process]) tree[workstream][process] = [];
+      if (!tree[workstream][process].find(d => d.fileName === doc.fileName)) {
+        tree[workstream][process].push({ ...doc, cleanFp });
       }
     });
-    // Keep all folders - rename _root to Archive for display
     setFolderTree(tree);
-    // Expand first proper folder
-    const first = Object.keys(tree)[0];
-    if (first) setExpandedFolders({ [first]: true });
+    const first = Object.keys(tree).find(k => k !== '_archive');
+    if (first) setExpandedFolders({ ['ws_' + first]: true });
   };
 
   const openDoc = (doc) => {
@@ -114,32 +115,54 @@ export default function Documents({ projects }) {
               <div style={{ fontSize:16, fontWeight:700, color:'#1e293b' }}>{selectedProject.name}</div>
               <div style={{ fontSize:12, color:'#64748b' }}>{selectedProject.client}{' · '}{(selectedProject.documents||[]).length} documents</div>
             </div>
-            {Object.keys(folderTree).length === 0 && <div style={{ color:'#94a3b8', fontSize:13, textAlign:'center', marginTop:40 }}>No documents yet. Run an Architect job to generate documents.</div>}
-            {Object.keys(folderTree).map(key => (
-              <div key={key} style={{ marginBottom:12 }}>
-                <div onClick={() => toggleFolder(key)} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'#f1f5f9', borderRadius:8, cursor:'pointer', fontWeight:600, fontSize:13, color:'#1e293b' }}>
-                  <span>{expandedFolders[key]?'▼':'▶'}</span>
-                  <span>{folderLabel(key)}</span>
-                  <span style={{ fontSize:11, color:'#94a3b8', fontWeight:400 }}>({folderTree[key].length} files)</span>
-                </div>
-                {expandedFolders[key] && (
-                  <div style={{ marginLeft:16, marginTop:4 }}>
-                    {folderTree[key].map((doc, i) => (
-                      <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:6, marginBottom:3, background:'#fff', border:'1px solid #e2e8f0' }}>
-                        <span style={{ fontSize:16 }}>📄</span>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontSize:13, fontWeight:500, color:'#1e293b' }}>{doc.agentName||doc.agentId}</div>
-                          <div style={{ fontSize:10, color:'#94a3b8' }}>{doc.fileName} · {doc.generatedAt?new Date(doc.generatedAt).toLocaleString():''}</div>
-                        </div>
-                        <button onClick={() => openDoc(doc)} style={{ padding:'4px 10px', borderRadius:6, border:'none', background:'#1e40af', color:'#fff', cursor:'pointer', fontSize:11 }}>Open</button>
-                        <button onClick={() => deleteDoc(doc)} disabled={deleting===doc.fileName} style={{ padding:'4px 10px', borderRadius:6, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:11 }}>{deleting===doc.fileName?'...':'Delete'}</button>
-                      </div>
-                    ))}
+            {Object.keys(folderTree).length === 0 && <div style={{ color:'#94a3b8', fontSize:13, textAlign:'center', marginTop:40 }}>No documents yet.</div>}
+            {Object.keys(folderTree).map(workstream => {
+              const isArchive = workstream === '_archive';
+              const processes = folderTree[workstream];
+              const wsKey = 'ws_' + workstream;
+              const totalFiles = Object.values(processes).reduce((a,b) => a + b.length, 0);
+              const wsIcon = isArchive ? '🗄️' : '📁';
+              const wsLabel = isArchive ? 'Archive (old files)' : workstream;
+              return (
+                <div key={workstream} style={{ marginBottom:8 }}>
+                  <div onClick={() => toggleFolder(wsKey)} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background: isArchive ? '#f8f8f8' : '#e8f0fe', borderRadius:8, cursor:'pointer', fontWeight:700, fontSize:13, color: isArchive ? '#94a3b8' : '#1e293b' }}>
+                    <span>{expandedFolders[wsKey] ? '▼' : '▶'}</span>
+                    <span>{wsIcon} {wsLabel}</span>
+                    <span style={{ fontSize:11, color:'#94a3b8', fontWeight:400 }}>({totalFiles} files)</span>
                   </div>
-                )}
-              </div>
-            ))}
-          </>
+                  {expandedFolders[wsKey] && Object.keys(processes).map(process => {
+                    const procKey = wsKey + '_' + process;
+                    const docs = processes[process];
+                    if (process === '_root') return docs.map((doc, i) => (
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', borderRadius:6, marginBottom:3, marginLeft:16, marginTop:3, background:'#fff', border:'1px solid #e2e8f0' }}>
+                        <span style={{ fontSize:14 }}>📄</span>
+                        <div style={{ flex:1 }}><div style={{ fontSize:12, fontWeight:500 }}>{doc.agentName||doc.agentId}</div><div style={{ fontSize:10, color:'#94a3b8' }}>{doc.fileName}</div></div>
+                        <button onClick={() => openDoc(doc)} style={{ padding:'3px 8px', borderRadius:5, border:'none', background:'#1e40af', color:'#fff', cursor:'pointer', fontSize:11 }}>Open</button>
+                        <button onClick={() => deleteDoc(doc)} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:11 }}>Delete</button>
+                      </div>
+                    ));
+                    return (
+                      <div key={process} style={{ marginLeft:16, marginTop:4, marginBottom:4 }}>
+                        <div onClick={() => toggleFolder(procKey)} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 12px', background:'#f1f5f9', borderRadius:6, cursor:'pointer', fontWeight:600, fontSize:12, color:'#1e293b' }}>
+                          <span>{expandedFolders[procKey] ? '▼' : '▶'}</span>
+                          <span>📂 {process}</span>
+                          <span style={{ fontSize:10, color:'#94a3b8', fontWeight:400 }}>({docs.length} files)</span>
+                        </div>
+                        {expandedFolders[procKey] && docs.map((doc, i) => (
+                          <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', borderRadius:6, marginBottom:3, marginLeft:16, marginTop:3, background:'#fff', border:'1px solid #e2e8f0' }}>
+                            <span style={{ fontSize:14 }}>📄</span>
+                            <div style={{ flex:1 }}><div style={{ fontSize:12, fontWeight:500 }}>{doc.agentName||doc.agentId}</div><div style={{ fontSize:10, color:'#94a3b8' }}>{doc.fileName} · {doc.generatedAt ? new Date(doc.generatedAt).toLocaleString() : ''}</div></div>
+                            <button onClick={() => openDoc(doc)} style={{ padding:'3px 8px', borderRadius:5, border:'none', background:'#1e40af', color:'#fff', cursor:'pointer', fontSize:11 }}>Open</button>
+                            <button onClick={() => deleteDoc(doc)} disabled={deleting===doc.fileName} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:11 }}>{deleting===doc.fileName?'...':'Delete'}</button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+                    </>
         ) : (
           <div style={{ color:'#94a3b8', fontSize:13, textAlign:'center', marginTop:40 }}>Select a project to view documents</div>
         )}

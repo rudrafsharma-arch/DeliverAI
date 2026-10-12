@@ -342,12 +342,12 @@ const Orchestrator = require('./orchestrator');
   setTimeout(() => { try { proc.kill(); send('complete', output.trim() || 'Timeout'); res.end(); } catch(e){} }, 60000);
 });
 
-app.get('/download/:projectId/:fileName', (req, res) => {
-  const filePath = path.join(getProjectDir(req.params.projectId), req.params.fileName);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error:'File not found' });
-  res.download(filePath);
+app.get('/download/:projectId/*', (req, res) => {
+  const relPath = req.params[0];
+  const filePath = path.join(getProjectDir(req.params.projectId), relPath);
+  if (!fs.existsSync(filePath)) return res.status(404).send('File not found: ' + relPath);
+  res.setHeader('Content-Type', 'text/html'); res.send(fs.readFileSync(filePath, 'utf8'));
 });
-
 
 app.get('/orchestrate', async (req, res) => {
   const { projectId, ...formData } = req.query;
@@ -534,6 +534,21 @@ app.delete('/documents/:projectId/*', (req, res) => {
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Read agent prompt
+app.get('/agents/:id/prompt', (req, res) => {
+  const promptPath = path.join(__dirname, '../agents', req.params.id, 'prompt.md');
+  if (!fs.existsSync(promptPath)) return res.status(404).json({ error: 'Prompt not found' });
+  res.json({ prompt: fs.readFileSync(promptPath, 'utf8') });
+});
+
+// Update agent prompt
+app.put('/agents/:id/prompt', (req, res) => {
+  const promptPath = path.join(__dirname, '../agents', req.params.id, 'prompt.md');
+  if (!fs.existsSync(promptPath)) return res.status(404).json({ error: 'Agent not found' });
+  fs.writeFileSync(promptPath, req.body.prompt, 'utf8');
+  res.json({ success: true });
 });
 require("./analyse-route")(app, AGENTS);
 

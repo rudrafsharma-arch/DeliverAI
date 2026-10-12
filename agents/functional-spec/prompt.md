@@ -61,3 +61,16 @@ No markdown. No explanation. Just raw HTML.
 - Sign-off tables must have input fields for name, date, signature — not blank lines
 - Open issues tables must have editable assignee and target date fields
 - All documents must be interactive — reviewers can fill fields directly in the browser
+
+## CONTENT DEPTH REQUIREMENTS - CRITICAL
+- Every section must have MINIMUM 3-4 detailed paragraphs of specific, realistic content
+- Tables must have MINIMUM 8-10 rows with real, detailed data specific to the client and process
+- Do NOT use generic placeholder content - make it specific to the project, client, process
+- Executive Summary: minimum 400 words
+- Each main section: minimum 300 words of detailed content
+- Gap Analysis: minimum 10 gaps with detailed solutions
+- Total document size must be at LEAST 50KB of HTML content
+- Use the client name, process name, and system landscape throughout - not generic terms
+- Include specific SAP transaction codes, table names, API names where relevant
+- Include realistic data volumes, timelines, and business metrics
+- The document should read like it was written by a 20-year SAP consultant who knows this client deeply

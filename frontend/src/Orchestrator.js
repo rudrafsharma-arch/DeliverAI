@@ -7,6 +7,11 @@ const statusIcons = { running: '⚡', completed: '✅', failed: '❌', queued: '
 // Steps: form → analysing → approval → running → done
 export default function Orchestrator({ projects, onClose, orchState, orchMessages, orchAgents, orchDoc, onStart, onStop }) {
   const [selectedProject, setSelectedProject] = useState(projects?.[0]?.id || '');
+  const handleProjectSelect = (id) => {
+    setSelectedProject(id);
+    const proj = projects?.find(p => p.id === id);
+    if (proj) setFormData(f => ({ ...f, client: proj.client || f.client }));
+  };
   const [formData, setFormData] = useState({ projectName: '', client: '', workstream: 'OTC', processName: '', industry: 'Manufacturing', requirement: '', systemLandscape: '', existingLicenses: '', budget: 'Not defined', timeline: '', version: '1.0' });
   const [step, setStep] = useState('form'); // form | analysing | approval | running | done
   const [analysis, setAnalysis] = useState(null); // { analysis, recommendedAgents, newAgents, estimatedTime }
@@ -39,7 +44,7 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
     fetch('http://localhost:3002/analyse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...formData, attachedFiles })
+      body: JSON.stringify({ ...formData, workstream: formData.workstream === 'Other' ? formData.customWorkstream : formData.workstream, attachedFiles })
     }).then(res => {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -129,7 +134,7 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
               <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16, color: '#1e40af' }}>📋 Project Details</div>
 
               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Project</label>
-              <select value={selectedProject} onChange={e => setSelectedProject(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 12, fontSize: 13 }}>
+              <select value={selectedProject} onChange={e => handleProjectSelect(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 12, fontSize: 13 }}>
                 {projects?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
 
@@ -146,9 +151,12 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
               ))}
 
               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Workstream *</label>
-              <select value={formData.workstream} onChange={e => setFormData(p => ({ ...p, workstream: e.target.value }))} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 12, fontSize: 13 }}>
-                {['P2P', 'OTC', 'MFG', 'RTR', 'HCM', 'SCM', 'Other'].map(o => <option key={o}>{o}</option>)}
+              <select value={formData.workstream} onChange={e => setFormData(p => ({ ...p, workstream: e.target.value }))} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: formData.workstream === 'Other' ? 4 : 12, fontSize: 13 }}>
+                {['P2P','OTC','MFG','RTR','HCM','SCM','FI','MM','SD','HR','EWM','TM','Other'].map(o => <option key={o}>{o}</option>)}
               </select>
+              {formData.workstream === 'Other' && (
+                <input value={formData.customWorkstream} onChange={e => setFormData(p => ({ ...p, customWorkstream: e.target.value }))} placeholder="Type your workstream..." style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 12, fontSize: 13 }} />
+              )}
 
               <label style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Industry</label>
               <select value={formData.industry} onChange={e => setFormData(p => ({ ...p, industry: e.target.value }))} style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 12, fontSize: 13 }}>
@@ -392,11 +400,22 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
         </div>
 
         {/* Right — Architecture Document */}
-        {architectDoc && (
+        {viewingDoc ? (
+          <div style={{ width: 420, borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '10px 16px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={() => setViewingDoc(null)} style={{ padding: '3px 8px', borderRadius: 5, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: 11 }}>← Back</button>
+              <span style={{ fontWeight: 700, fontSize: 13, color: '#1e40af', flex: 1 }}>{viewingDoc.agentName}</span>
+              <button onClick={() => { const b=new Blob([viewingDoc.html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=viewingDoc.fileName||'doc.html';a.click(); }} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#1e40af', color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Download</button>
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <iframe srcDoc={viewingDoc.html} style={{ width: '100%', height: '100%', border: 'none' }} title={viewingDoc.agentName} />
+            </div>
+          </div>
+        ) : architectDoc ? (
           <div style={{ width: 420, borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '10px 16px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontWeight: 700, fontSize: 13, color: '#1e40af', flex: 1 }}>📋 Architecture Document</span>
-              <button onClick={() => { const w = window.open('', '_blank'); w.document.write(architectDoc.html); w.document.close(); }} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Full</button>
+              <button onClick={() => { const w = window.open('', '_blank'); w.document.write(architectDoc.html); w.document.close(); }} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>⛶ Full Screen</button>
               <button onClick={() => { const blob = new Blob([architectDoc.html], {type: 'text/html'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = architectDoc.fileName || 'architecture.html'; a.click(); }} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#1e40af', color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Download</button>
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -405,7 +424,7 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
               />
             </div>
           </div>
-        )}
+        ) : null}
       </div>
       <style>{`@keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }`}</style>
         {/* Viewing subagent doc */}

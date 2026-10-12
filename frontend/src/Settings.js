@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 const BLUE='#0070F2',GREEN='#16a34a',RED='#dc2626',AMBER='#d97706';
 const api={get:url=>fetch(url).then(r=>r.json()),post:(url,body)=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json())};
 const SECTIONS=[
@@ -47,6 +47,86 @@ const SECTIONS=[
     {key:'SNOW_USERNAME',label:'Username',placeholder:'admin'},
     {key:'SNOW_PASSWORD',label:'Password',placeholder:'...',secret:true}]},
 ];
+function AgentPromptEditor() {
+  const [agents, setAgents] = React.useState([]);
+  const [selected, setSelected] = React.useState(null);
+  const [prompt, setPrompt] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
+
+  React.useEffect(() => {
+    fetch('/api/agents').then(r => r.json()).then(data => {
+      setAgents(Array.isArray(data) ? data : []);
+    }).catch(() => {});
+  }, []);
+
+  const loadPrompt = (agentId) => {
+    setSelected(agentId);
+    setSaved(false);
+    fetch('http://localhost:3002/agents/' + agentId + '/prompt')
+      .then(r => r.json())
+      .then(data => setPrompt(data.prompt || ''))
+      .catch(() => setPrompt('Could not load prompt'));
+  };
+
+  const savePrompt = async () => {
+    setSaving(true);
+    try {
+      await fetch('http://localhost:3002/agents/' + selected + '/prompt', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch(e) { alert('Save failed: ' + e.message); }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', marginTop: 24 }}>
+      <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: 13, color: '#1e293b' }}>
+        🤖 Agent Prompt Editor
+        <div style={{ fontSize: 11, color: '#64748b', fontWeight: 400, marginTop: 2 }}>Edit the grounding prompt for each agent. Changes take effect immediately on next run.</div>
+      </div>
+      <div style={{ display: 'flex', height: 500 }}>
+        {/* Agent list */}
+        <div style={{ width: 200, borderRight: '1px solid #e2e8f0', overflowY: 'auto', background: '#fafafa' }}>
+          {agents.filter(a => a.id !== 'architect').map(a => (
+            <div key={a.id} onClick={() => loadPrompt(a.id)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', background: selected === a.id ? '#eff6ff' : 'transparent', color: selected === a.id ? '#1e40af' : '#1e293b', fontWeight: selected === a.id ? 600 : 400, fontSize: 12 }}>
+              {a.name}
+            </div>
+          ))}
+        </div>
+        {/* Prompt editor */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {selected ? (
+            <>
+              <textarea
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                style={{ flex: 1, padding: 16, fontSize: 12, fontFamily: 'monospace', border: 'none', resize: 'none', outline: 'none', lineHeight: 1.6 }}
+                placeholder="Loading prompt..."
+              />
+              <div style={{ padding: '8px 16px', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc' }}>
+                <button onClick={savePrompt} disabled={saving} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: '#1e40af', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>
+                  {saving ? 'Saving...' : 'Save Prompt'}
+                </button>
+                {saved && <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600 }}>✅ Saved!</span>}
+                <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>{prompt.length} chars</span>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#94a3b8', fontSize: 13 }}>
+              Select an agent to edit its prompt
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Settings(){
   const [config,setConfig]=useState({});
   const [sysInfo,setSysInfo]=useState(null);
@@ -209,6 +289,7 @@ export default function Settings(){
           </button>
         </div>
       </div>
+      <AgentPromptEditor />
     </div>
   );
 }
