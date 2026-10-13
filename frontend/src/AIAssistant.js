@@ -142,8 +142,16 @@ export default function AIAssistant({ onClose, projects, onNavigate, hideHeader 
       if (!project) { addMessage('assistant', 'No project selected.', 'text'); setLoading(false); return; }
       let docs = project.documents || [];
 
-      // Filter by agent/target
-      if (intent.deleteTarget) docs = docs.filter(d => (d.agentId||'').includes(intent.deleteTarget) || (d.agentName||'').toLowerCase().includes(intent.deleteTarget));
+      // Filter by exact filename first, then agent/target
+      if (intent.deleteTarget) {
+        // Check if target looks like a filename (has .html extension)
+        const isFileName = intent.deleteTarget.includes('_v') || intent.deleteTarget.includes('.html');
+        if (isFileName) {
+          docs = docs.filter(d => (d.fileName||'').toLowerCase().includes(intent.deleteTarget.toLowerCase()));
+        } else {
+          docs = docs.filter(d => (d.agentId||'').includes(intent.deleteTarget) || (d.agentName||'').toLowerCase().includes(intent.deleteTarget));
+        }
+      }
       // Filter by status (failed/error)
       if (intent.deleteFilter === 'failed') docs = docs.filter(d => d.status === 'failed' || !d.fileName);
       // Filter by version
@@ -156,6 +164,10 @@ export default function AIAssistant({ onClose, projects, onNavigate, hideHeader 
       }
       // Confirm if deleting multiple
       const names = docs.map(d => d.fileName || d.agentName).join(', ');
+      if (docs.length > 1) {
+        const confirmed = window.confirm('Are you sure you want to delete ' + docs.length + ' documents?\n\n' + names);
+        if (!confirmed) { addMessage('assistant', 'Deletion cancelled.', 'text'); setLoading(false); return; }
+      }
       addMessage('assistant', 'Deleting ' + docs.length + ' document(s): ' + names, 'text');
       let deleted = 0;
       for (const doc of docs) {
