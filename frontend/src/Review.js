@@ -15,13 +15,16 @@ export default function Review({ projects }) {
 
   const loadReviewDocs = async () => {
     setLoading(true);
-    const docs = [];
-    for (const proj of projects) {
-      (proj.documents || []).filter(d => d.fileName && ['IN_REVIEW','CHANGES_REQUESTED'].includes(d.status)).forEach(d => {
-        docs.push({ ...d, projectId: proj.id, projectName: proj.name, client: proj.client });
-      });
-    }
-    setReviewDocs(docs);
+    try {
+      const fresh = await fetch('/api/projects').then(r => r.json());
+      const docs = [];
+      for (const proj of (Array.isArray(fresh) ? fresh : projects)) {
+        (proj.documents || []).filter(d => d.fileName && ['IN_REVIEW','CHANGES_REQUESTED'].includes(d.status)).forEach(d => {
+          docs.push({ ...d, projectId: proj.id, projectName: proj.name, client: proj.client });
+        });
+      }
+      setReviewDocs(docs);
+    } catch(e) { console.error('Review load failed:', e); }
     setLoading(false);
   };
 
