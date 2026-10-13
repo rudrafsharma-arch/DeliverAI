@@ -29,10 +29,13 @@ export default function Review({ projects }) {
   };
 
   const openDoc = async (doc) => {
-    const fp = encodeURIComponent(doc.filePath || doc.fileName);
-    const r = await fetch('http://localhost:3002/download/' + doc.projectId + '/' + fp);
-    const html = await r.text();
-    setViewingDoc({ ...doc, html });
+    const fp = (doc.filePath || doc.fileName || '').split('/').map(encodeURIComponent).join('/');
+    try {
+      const r = await fetch('http://localhost:3002/download/' + doc.projectId + '/' + fp);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const html = await r.text();
+      setViewingDoc({ ...doc, html });
+    } catch(e) { alert('Could not open document: ' + e.message); }
   };
 
   const updateStatus = async (doc, status) => {
