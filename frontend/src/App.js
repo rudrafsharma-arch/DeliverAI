@@ -589,7 +589,7 @@ export default function App() {
     return () => unsubscribe('app');
   }, []);
 
-  const phases = ['all','discover','explore','realize','test','deploy','run'];
+  const phases = ['all','discover','prepare','explore','realize','test','deploy','run'];
   const filtered = phase==='all' ? agents : agents.filter(a=>a.phase===phase);
 
   const handleComplete = () => {
