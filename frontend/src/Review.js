@@ -39,7 +39,7 @@ export default function Review({ projects }) {
   };
 
   const updateStatus = async (doc, status) => {
-    await fetch('http://localhost:3002/documents/' + doc.projectId + '/status', {
+    await fetch('/api/documents/' + doc.projectId + '/status', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fileName: doc.fileName, filePath: doc.filePath, status, reviewer: reviewerName || 'Reviewer', comment })
     });
@@ -53,7 +53,7 @@ export default function Review({ projects }) {
     if (!window.confirm('Regenerate ' + doc.agentName + ' with reviewer feedback?\n\nFeedback: ' + comments)) return;
     setRegenerating(doc.fileName);
     try {
-      const r = await fetch('http://localhost:3002/rerun-agent', {
+      const r = await fetch('/api/rerun-agent', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId: doc.projectId, agentId: doc.agentId, agentName: doc.agentName, filePath: doc.filePath, reviewComments: comments })
       });

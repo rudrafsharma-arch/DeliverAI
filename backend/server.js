@@ -245,6 +245,46 @@ app.post('/api/sync/pull', (req, res) => {
   });
 });
 
+
+// Proxy save document
+app.post('/api/save-document', async (req, res) => {
+  try {
+    const r = await fetch(MCP + '/save-document', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(req.body) });
+    const d = await r.json(); res.json(d);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+// Proxy document status update
+app.put('/api/documents/:projectId/status', async (req, res) => {
+  try {
+    const r = await fetch(MCP + '/documents/' + req.params.projectId + '/status', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body)
+    });
+    const d = await r.json();
+    res.json(d);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Proxy rerun agent
+app.post('/api/rerun-agent', async (req, res) => {
+  try {
+    const r = await fetch(MCP + '/rerun-agent', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body)
+    });
+    const d = await r.json();
+    res.json(d);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Proxy rerun status
+app.get('/api/rerun-status/:jobId', async (req, res) => {
+  try {
+    const r = await fetch(MCP + '/rerun-status/' + req.params.jobId);
+    const d = await r.json();
+    res.json(d);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 app.listen(PORT, () => {
   console.log('\n╔══════════════════════════════════════════════╗');
   console.log('║  DeliverAI Backend           :' + PORT + '          ║');
