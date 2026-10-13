@@ -215,3 +215,68 @@ Prepared by: Vikram Sharma, Accenture
 - Learning/knowledge material always goes to private DeliverAI-data repo
 - Responsible AI — documents always DRAFT, never pre-approved by AI
 - iFlow naming: {System}_{Client}_{BusinessUnit}-{Process}_{Type}
+
+---
+
+## AGENTS — FULL LIST (47 Total, 12 Built, 35 Remaining)
+
+### Built (12)
+1. Architect (orchestrator)
+2. Business Blueprint
+3. Functional Specification
+4. Technical Specification
+5. Configuration Document
+6. Test Scripts
+7. iFlow Builder
+8. RICEFW Builder
+9. ABAP Generator
+10. CAP Service Builder
+11. Incident Analyser
+12. BTP-SBPA Workflow Agent
+
+### Phase 1 — Discover (5 to build)
+13. Business Case Generator
+14. RFP Response Agent
+15. Proposal Writer / SOW Generator
+16. Estimation Agent (effort & resource plan)
+17. Landscape Assessment Agent
+
+### Phase 2 — Prepare (5 to build)
+18. Project Charter Agent
+19. Governance Model & RACI Agent
+20. Project Plan Agent
+21. Risk Register Agent
+22. Naming Convention & Standards Agent
+
+### Phase 3 — Explore (7 to build)
+23. Workshop Output Agent (fit-to-standard notes)
+24. BPML Agent (Business Process Master List)
+25. Solution Design Agent
+26. Gap Analysis Agent (delta design)
+27. Interface Inventory Agent
+28. Data Migration Strategy Agent
+29. Decision Log Agent
+
+### Phase 4 — Realize (6 to build)
+30. Data Migration Object Spec Agent
+31. Unit Test Evidence Agent
+32. Integration Test Plan Agent
+33. UAT Script Agent
+34. Defect Report Agent
+35. Sprint Review Notes Agent
+
+### Phase 5 — Deploy (6 to build)
+36. Cutover Plan & Runbook Agent
+37. Go-Live Readiness Checklist Agent
+38. Training Material Agent
+39. Hypercare Plan Agent
+40. Transport Runbook Agent
+41. Mock Cutover Results Agent
+
+### Phase 6 — Run (6 to build)
+42. AMS Governance & SLA Agent
+43. Knowledge Transfer Agent
+44. Monthly Service Review Agent
+45. Change Request Agent
+46. Root Cause Analysis Agent
+47. Continuous Improvement Agent
