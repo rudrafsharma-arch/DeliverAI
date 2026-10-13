@@ -121,7 +121,7 @@ export default function Review({ projects }) {
         <div key={i} style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, padding:16, marginBottom:12, display:'flex', alignItems:'center', gap:12 }}>
           <div style={{ flex:1 }}>
             <div style={{ fontSize:14, fontWeight:600, color:'#1e293b' }}>{doc.agentName}</div>
-            <div style={{ fontSize:12, color:'#64748b', marginTop:2 }}>{doc.projectName} · {doc.filePath || doc.fileName}</div>
+            <div style={{ fontSize:12, color:'#64748b', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:400 }}>{doc.projectName} · {(doc.filePath||doc.fileName||'').split('/').pop()}</div>
             {(doc.comments||[]).length > 0 && (
               <div style={{ fontSize:11, color:'#dc2626', marginTop:4 }}>💬 {doc.comments[doc.comments.length-1].text}</div>
             )}
