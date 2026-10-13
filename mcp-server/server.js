@@ -562,7 +562,7 @@ function processRerunQueue() {
   let output = '';
   proc.stdout.on('data', d => output += d.toString());
   proc.on('close', (code) => {
-    if (code === 0 && output.length > 100) {
+    if (code === 0 && output.length > 5000 && output.includes('<html') && !output.match(/x{50,}/i)) {
       const { saveDocumentToProject } = require('./doc-saver');
       const fpParts = (filePath || '').split('/');
       const folderWs = fpParts.length >= 3 ? fpParts[fpParts.length - 3] : (proj.workstream || 'General');
