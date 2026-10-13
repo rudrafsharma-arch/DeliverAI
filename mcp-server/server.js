@@ -549,7 +549,17 @@ function processRerunQueue() {
   const agentPrompt = fs.existsSync(agentPromptPath) ? fs.readFileSync(agentPromptPath, 'utf8') : '';
   // For architect, add explicit instruction to regenerate HTML only
   const isArchitect = agentId === 'architect';
-  const subPrompt = agentPrompt + '\n\n## PROJECT\nProject: ' + (proj.name||'') + '\nClient: ' + (proj.client||'') + '\n\n## REVIEWER FEEDBACK - ADDRESS ALL POINTS\n' + reviewComments + '\n\n' + (isArchitect ? 'Regenerate ONLY the HTML Solution Architecture document addressing the reviewer feedback. Do NOT include AGENT_PLAN_START or RUNTIME_AGENT blocks. Output only the HTML document.' : 'Regenerate the complete document addressing all reviewer feedback above.');
+  // Read original document content for context
+  let originalContent = '';
+  if (filePath) {
+    const origPath = require('path').join(__dirname, '../projects', projectId, filePath);
+    if (fs.existsSync(origPath)) {
+      const raw = fs.readFileSync(origPath, 'utf8');
+      // Strip HTML tags for context, keep first 3000 chars
+      originalContent = '\n\n## ORIGINAL DOCUMENT CONTENT (for reference)\n' + raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').substring(0,3000);
+    }
+  }
+  const subPrompt = agentPrompt + '\n\n## PROJECT\nProject: ' + (proj.name||'') + '\nClient: ' + (proj.client||'') + '\n\n## REVIEWER FEEDBACK - ADDRESS ALL POINTS\n' + reviewComments + originalContent + '\n\n' + (isArchitect ? 'Regenerate ONLY the HTML Solution Architecture document addressing the reviewer feedback. Do NOT include AGENT_PLAN_START or RUNTIME_AGENT blocks. Output only the HTML document.' : 'Regenerate the complete document addressing all reviewer feedback above.');
   const gitBash = process.env.GIT_BASH_PATH;
   const claudePath = process.env.CLAUDE_PATH;
   if (!gitBash || !claudePath) { completedReruns[jobId] = { done: true, error: 'Claude not configured' }; rerunRunning = false; processRerunQueue(); return; }
