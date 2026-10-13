@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from './Toast';
 
 const STATUS_COLORS = { DRAFT:'#94a3b8', IN_REVIEW:'#f59e0b', APPROVED:'#16a34a', CHANGES_REQUESTED:'#dc2626' };
 const STATUS_LABELS = { DRAFT:'DRAFT', IN_REVIEW:'IN REVIEW', APPROVED:'APPROVED', CHANGES_REQUESTED:'CHANGES REQ.' };
@@ -35,7 +36,7 @@ export default function Review({ projects }) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const html = await r.text();
       setViewingDoc({ ...doc, html });
-    } catch(e) { alert('Could not open document: ' + e.message); }
+    } catch(e) { toast('Could not open document: ' + e.message,'info'); }
   };
 
   const updateStatus = async (doc, status) => {
@@ -58,9 +59,9 @@ export default function Review({ projects }) {
         body: JSON.stringify({ projectId: doc.projectId, agentId: doc.agentId, agentName: doc.agentName, filePath: doc.filePath, reviewComments: comments })
       });
       const d = await r.json();
-      if (d.success) alert(d.message || 'Regenerating in background. New version will appear in Documents tab when done.');
-      else alert('Failed: ' + (d.error || 'Unknown'));
-    } catch(e) { alert('Error: ' + e.message); }
+      if (d.success) toast(d.message || 'Regenerating in background. New version will appear in Documents tab when done.','info');
+      else toast('Failed: ' + (d.error || 'Unknown','info'));
+    } catch(e) { toast('Error: ' + e.message,'info'); }
     setRegenerating(null);
   };
 

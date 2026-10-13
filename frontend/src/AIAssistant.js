@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { toast } from './Toast';
 import { startJob } from './JobManager';
 
 const BLUE = '#0070F2', GREEN = '#16a34a', PURPLE = '#7c3aed', AMBER = '#d97706';

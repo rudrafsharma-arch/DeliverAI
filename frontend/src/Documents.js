@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
+import { toast } from './Toast';
 
 export default function Documents({ projects }) {
   const [selectedProject, setSelectedProject] = useState(null);
@@ -25,7 +26,7 @@ export default function Documents({ projects }) {
       const proj = updated.find(p => p.id === selectedProject.id);
       if (proj) { setSelectedProject(proj); buildFolderTree(proj); }
       setApprovalModal(null); setReviewComment('');
-    } catch(e) { alert('Failed: ' + e.message); }
+    } catch(e) { toast('Failed: ' + e.message,'info'); }
   };
 
   // Auto-refresh selected project every 30 seconds (for real-time updates during orchestration)
@@ -83,7 +84,7 @@ export default function Documents({ projects }) {
     fetch('http://localhost:3002/download/' + selectedProject.id + '/' + fp.replace(selectedProject.id + '/', ''))
       .then(r => r.text())
       .then(html => setViewingDoc({ ...doc, html }))
-      .catch(() => alert('Could not load document'));
+      .catch(() => toast("Could not load document",'success'));
   };
 
   const deleteDoc = async (doc) => {
@@ -95,7 +96,7 @@ export default function Documents({ projects }) {
       const updated = await fetch('/api/projects').then(r => r.json());
       const proj = updated.find(p => p.id === selectedProject.id);
       if (proj) { setSelectedProject(proj); buildFolderTree(proj); }
-    } catch(e) { alert('Delete failed: ' + e.message); }
+    } catch(e) { toast('Delete failed: ' + e.message,'info'); }
     setDeleting(null);
   };
 
@@ -143,7 +144,7 @@ export default function Documents({ projects }) {
           <span style={{ fontSize:13, fontWeight:600, flex:1 }}>{viewingDoc.agentName} — {viewingDoc.fileName}</span>
           {editMode ? (
             <>
-              <button onClick={() => { const html=editorRef.current.innerHTML; fetch('/api/save-document',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({projectId:selectedProject.id,filePath:viewingDoc.filePath||viewingDoc.fileName,html})}).then(()=>{setViewingDoc(v=>({...v,html}));setEditMode(false);alert('Saved!');}).catch(e=>alert('Save failed: '+e.message)); }} style={{ padding:'4px 12px', borderRadius:6, border:'none', background:'#16a34a', color:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Save</button>
+              <button onClick={() => { const html=editorRef.current.innerHTML; fetch('/api/save-document',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({projectId:selectedProject.id,filePath:viewingDoc.filePath||viewingDoc.fileName,html})}).then(()=>{setViewingDoc(v=>({...v,html}));setEditMode(false);toast("Saved!",'success');}).catch(e=>toast('Save failed: '+e.message,'info')); }} style={{ padding:'4px 12px', borderRadius:6, border:'none', background:'#16a34a', color:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>Save</button>
               <button onClick={() => setEditMode(false)} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12 }}>Cancel</button>
             </>
           ) : (
@@ -222,7 +223,7 @@ export default function Documents({ projects }) {
                             <span style={{ fontSize:10, fontWeight:700, color:statusColors[doc.status]||'#94a3b8', background:(statusColors[doc.status]||'#94a3b8')+'20', padding:'2px 6px', borderRadius:10 }}>{statusLabels[doc.status]||'DRAFT'}</span>
                             <button onClick={() => openDoc(doc)} style={{ padding:'3px 8px', borderRadius:5, border:'none', background:'#1e40af', color:'#fff', cursor:'pointer', fontSize:11 }}>Open</button>
                             {doc.status !== 'APPROVED' && <button onClick={() => setApprovalModal({doc, projectId: selectedProject.id})} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #f59e0b', background:'#fff', color:'#f59e0b', cursor:'pointer', fontSize:11 }}>Review</button>}
-                            {doc.status === 'CHANGES_REQUESTED' && <button disabled={regenerating===doc.fileName} onClick={() => { const comments=(doc.comments||[]).map(x=>x.text).join('; '); if(!window.confirm('Regenerate '+doc.agentName+' with reviewer feedback?\n\nFeedback: '+comments)) return; setRegenerating(doc.fileName); fetch('/api/rerun-agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({projectId:selectedProject.id,agentId:doc.agentId,agentName:doc.agentName,filePath:doc.filePath,reviewComments:comments})}).then(r=>r.json()).then(d=>{setRegenerating(null);if(d.success){alert('Claude is regenerating in background. Check Documents tab in ~3 min.');}else{alert('Failed: '+(d.error||'Unknown'));}}).catch(e=>{setRegenerating(null);alert('Error: '+e.message);}); }} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #7c3aed', background: regenerating===doc.fileName ? '#7c3aed' : '#fff', color: regenerating===doc.fileName ? '#fff' : '#7c3aed', cursor:'pointer', fontSize:11 }}>{regenerating===doc.fileName ? 'Regenerating...' : 'Regenerate'}</button>}
+                            {doc.status === 'CHANGES_REQUESTED' && <button disabled={regenerating===doc.fileName} onClick={() => { const comments=(doc.comments||[]).map(x=>x.text).join('; '); if(!window.confirm('Regenerate '+doc.agentName+' with reviewer feedback?\n\nFeedback: '+comments)) return; setRegenerating(doc.fileName); fetch('/api/rerun-agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({projectId:selectedProject.id,agentId:doc.agentId,agentName:doc.agentName,filePath:doc.filePath,reviewComments:comments})}).then(r=>r.json()).then(d=>{setRegenerating(null);if(d.success){toast("Claude is regenerating in background. Check Documents tab in ~3 min.",'success');}else{toast('Failed: '+(d.error||'Unknown','info'));}}).catch(e=>{setRegenerating(null);toast('Error: '+e.message,'info');}); }} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #7c3aed', background: regenerating===doc.fileName ? '#7c3aed' : '#fff', color: regenerating===doc.fileName ? '#fff' : '#7c3aed', cursor:'pointer', fontSize:11 }}>{regenerating===doc.fileName ? 'Regenerating...' : 'Regenerate'}</button>}
                             <button onClick={() => deleteDoc(doc)} disabled={deleting===doc.fileName} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:11 }}>{deleting===doc.fileName?'...':'Delete'}</button>
                           </div>
                         ))}

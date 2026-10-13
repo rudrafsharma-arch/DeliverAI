@@ -6,6 +6,7 @@ import { startJob, getRunningCount, subscribe, unsubscribe, importJob, updateApp
 import Orchestrator from './Orchestrator';
 import Documents from './Documents';
 import Review from './Review';
+import ToastContainer, { toast } from './Toast';
 
 const api = {
   get: (url) => fetch(url).then(r => r.json()),
@@ -666,7 +667,7 @@ export default function App() {
     }
   };
 
-  return (
+  return (<>
     <div style={{ fontFamily:'Inter, Segoe UI, Arial, sans-serif', minHeight:'100vh', background:'#f1f5f9', color:'#0f172a', display:'flex', flexDirection:'column' }}>
       <header style={{ background:'#fff', borderBottom:'1px solid #e2e8f0', padding:'0 20px', position:'sticky', top:0, zIndex:100 }}>
         <div style={{ maxWidth:1400, margin:'0 auto', display:'flex', alignItems:'center', height:54, gap:14 }}>
@@ -821,5 +822,7 @@ export default function App() {
         )}
       </div>
     </div>
+    <ToastContainer />
+  </>
   );
 }
