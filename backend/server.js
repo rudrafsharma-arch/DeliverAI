@@ -253,6 +253,16 @@ app.post('/api/save-document', async (req, res) => {
     const d = await r.json(); res.json(d);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+// Proxy download
+app.get('/api/download/:projectId/*', async (req, res) => {
+  try {
+    const filePath = req.params[0];
+    const r = await fetch(MCP + '/download/' + req.params.projectId + '/' + filePath);
+    const html = await r.text();
+    res.send(html);
+  } catch(e) { res.status(500).send('Error: '+e.message); }
+});
+
 // Proxy document status update
 app.put('/api/documents/:projectId/status', async (req, res) => {
   try {

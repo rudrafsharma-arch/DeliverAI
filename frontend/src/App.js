@@ -6,6 +6,7 @@ import { startJob, getRunningCount, subscribe, unsubscribe, importJob, updateApp
 import Orchestrator from './Orchestrator';
 import Documents from './Documents';
 import Review from './Review';
+import DocCompare from './DocCompare';
 import ToastContainer, { toast } from './Toast';
 
 const api = {
@@ -509,6 +510,7 @@ function GenerationPanel({ agent, project, onBack, onComplete, envConfig, onConf
 
 export default function App() {
   const [view, setView] = useState('agents');
+  const [showCompare, setShowCompare] = useState(false);
   const [agents, setAgents] = useState([]);
   const [projects, setProjects] = useState([]);
   const safeSetProjects = (data) => setProjects(Array.isArray(data) ? data : []);
@@ -712,7 +714,7 @@ export default function App() {
         {view === 'activity' ? (
           <div style={{ flex:1 }}><Activity onChainAgent={handleChainAgent} projects={projects} /></div>
         ) : view === 'documents' ? (
-          <div style={{ flex:1, display:'flex' }}><Documents projects={projects} /></div>
+          <div style={{ flex:1, display:'flex', flexDirection:'column' }}><div style={{ padding:'8px 16px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'flex-end' }}><button onClick={() => setShowCompare(true)} style={{ padding:'5px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12, color:'#64748b' }}>📊 Compare Docs</button></div><Documents projects={projects} /></div>
         ) : view === 'settings' ? (
           <div style={{ flex:1 }}><Settings /></div>
         ) : view==='review' ? (
@@ -823,6 +825,7 @@ export default function App() {
       </div>
     </div>
     <ToastContainer />
+    {showCompare && selectedProject && <DocCompare project={selectedProject} onClose={() => setShowCompare(false)} />}
   </>
   );
 }
