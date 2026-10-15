@@ -269,3 +269,99 @@ S/4HANA System
 - S/4HANA OData credentials (needed for A3)
 
 ### Once B4 is resolved, A1 + A4 can be built immediately with no new dependencies.
+
+
+---
+
+## PLATFORMS AND MCP SERVER BUILDER
+Last Updated: 2026-10-15
+
+### Vision
+DeliverAI becomes a no-code AI platform builder. Users create custom platforms
+(e.g. Incident Manager) as visual pipelines of agents, approval gates, and system
+connections. Each platform gets its own tab. MCP servers managed centrally with a master router.
+
+### New Tabs
+- Platforms tab - create and run custom AI workflow platforms
+- MCP Servers tab - manage all MCP connections with Postman-like tester
+
+### Trigger Types
+Manual, Schedule (cron), Webhook (BTP/external POST), API (exposed endpoint), MCP call, Event (doc approved / agent done / error)
+
+### Pipeline Features
+- Sequential and parallel agent steps
+- Approval gates between any steps with document review edit approve/reject
+- If approved document edited and is a dependency restart pipeline from that step
+- All subsequent dependent documents rebuilt automatically
+- Agents talk to each other - outputs passed as context to next agent
+- Managing agent orchestrates subagents can message it
+- Agents always created in Agents tab - platforms reuse existing setup
+- Fix always deployed to Dev only never Prod without separate promotion
+
+### MCP Server Manager
+- Master MCP Router - routes to correct client MCP based on request type
+- Postman-like connection tester - URL auth type test save named connection
+- See available tools per MCP server
+- Multiple MCP servers per platform selectable per agent step
+- Health monitoring per MCP server
+
+### Platform Storage
+platforms/incident-manager/platform.json + runs/
+
+### Phase 1 - Foundation (High Priority - Start Tomorrow)
+PL1  - Platforms tab - list create delete platforms
+PL2  - Platform builder UI - add agents connect sequentially save
+PL3  - Manual trigger - run platform see agents working in real time
+PL4  - Platform storage - platforms/name/platform.json + runs/
+PL5  - Platform appears as dynamic tab in DeliverAI nav
+PL6  - Agent-to-agent communication - outputs passed as context automatically
+PL7  - Managing agent orchestrates receives subagent messages
+
+### Phase 2 - Approval Gates and Dependencies (High Priority)
+PL8  - Approval gate step - review document edit approve/reject
+PL9  - On document edit in gate - detect dependencies in pipeline
+PL10 - Restart pipeline from edited document - rebuild all subsequent docs
+PL11 - Parallel agent execution in pipeline
+PL12 - Pipeline execution history in runs/ folder
+PL13 - Real-time pipeline status UI - see each step running/done/waiting
+
+### Phase 3 - MCP Servers Tab (High Priority)
+PL14 - MCP Servers tab - list all MCP servers
+PL15 - Add MCP server - URL auth type test connection save
+PL16 - Postman-like tester - call any tool see response save as named connection
+PL17 - Master MCP Router - routes to correct MCP based on type/capability
+PL18 - Multiple MCP servers per platform - selectable per agent step
+PL19 - MCP server health monitoring
+
+### Phase 4 - Advanced Triggers (Medium Priority)
+PL20 - Webhook trigger - receive POST from BTP/external auto-run platform
+PL21 - API trigger - expose named REST endpoint per platform
+PL22 - Schedule trigger - cron expression
+PL23 - MCP call trigger - another system calls platform via MCP protocol
+PL24 - Event trigger - document approved agent completed error occurred
+
+### Phase 5 - Incident Manager (High Priority - first real platform)
+PL25 - Build Incident Manager platform using Platform Builder
+PL26 - Connect to BTP MCP - receive iFlow failure events
+PL27 - Incident Analyser + RCA Agent + Fix Generator pipeline
+PL28 - Approval gate - review RCA before fix is generated
+PL29 - Approval gate - review fix before deployment to Dev
+PL30 - Deploy to Dev only - never Prod without separate promotion
+PL31 - Connect to S/4HANA - correlate source data with BTP error
+
+### Build Order
+Phase 1 tomorrow -> Phase 2 -> Phase 3 -> Phase 4 -> Phase 5 Incident Manager
+
+### Autonomous Incident Resolution (A1-A12)
+A1  - Webhook endpoint - receives BTP incident events - no dependencies - can build now
+A2  - BTP Message Processing Logs reader - BLOCKED on B4 platform team api/v1 access
+A3  - S/4HANA OData connector - BLOCKED on S/4HANA credentials
+A4  - Auto-trigger Architect on incident - depends on A1 A2
+A5  - Cross-system correlation engine - depends on A2 A3
+A6  - Auto-fix generator corrected iFlow or S/4HANA CR - depends on A4 A5
+A7  - Approval gate before deploy - Responsible AI human must approve
+A8  - Auto-deploy fixed iFlow to BTP Dev - depends on A7 B6
+A9  - Auto-raise Change Request in S/4HANA if fix on source side - depends on A7
+A10 - Incident history dashboard
+A11 - Proactive monitoring - poll BTP every N mins
+A12 - Learning engine - learns from past incidents to predict future failures
