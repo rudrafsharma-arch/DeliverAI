@@ -722,7 +722,7 @@ export default function App() {
         {view === 'activity' ? (
           <div style={{ flex:1 }}><Activity onChainAgent={handleChainAgent} projects={projects} /></div>
         ) : view === 'documents' ? (
-          <div style={{ flex:1, display:'flex', flexDirection:'column' }}><div style={{ padding:'8px 16px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'flex-end' }}><button onClick={() => { if(!selectedProject){alert('Please select a project first');return;} setShowCompare(true); }} style={{ padding:'5px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12, color:'#64748b' }}>📊 Compare Docs</button></div><Documents projects={projects} /></div>
+          <div style={{ flex:1, display:'flex', flexDirection:'column' }}><div style={{ padding:'8px 16px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'flex-end' }}><button onClick={() => setShowCompare(true)} style={{ padding:'5px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12, color:'#64748b' }}>📊 Compare Docs</button></div><Documents projects={projects} /></div>
         ) : view === 'settings' ? (
           <div style={{ flex:1 }}><Settings /></div>
         ) : view==='review' ? (

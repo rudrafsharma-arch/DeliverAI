@@ -254,6 +254,21 @@ app.post('/api/save-document', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// Proxy save-document (same version)
+app.post('/api/save-document', async (req, res) => {
+  try {
+    const r2 = await fetch(MCP + '/save-document', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(req.body) });
+    res.json(await r2.json());
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+// Proxy save-new-version
+app.post('/api/save-new-version', async (req, res) => {
+  try {
+    const r2 = await fetch(MCP + '/save-new-version', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(req.body) });
+    res.json(await r2.json());
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 // Proxy delete document
 app.delete('/api/documents/:projectId/*', async (req, res) => {
   try {

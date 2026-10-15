@@ -670,40 +670,51 @@ app.put('/documents/:projectId/status', (req, res) => {
   console.log('[Approval] ' + fileName + ' -> ' + status);
   res.json({ success: true, doc });
 });
-app.post('/save-document', (req, res) => {
+app.post('/save-new-version', (req, res) => {
   const { projectId, filePath, html } = req.body;
   if (!projectId || !filePath || !html) return res.status(400).json({ error: 'Missing fields' });
-  const fullPath = path.join(getProjectDir(projectId), filePath.replace(projectId + '/', ''));
-  if (!fs.existsSync(path.dirname(fullPath))) return res.status(404).json({ error: 'Path not found' });
-  fs.writeFileSync(fullPath, html, 'utf8');
-  console.log('[Save] Document updated:', fullPath);
-  res.json({ success: true });
+  try {
+    const { saveDocumentToProject } = require('./doc-saver');
+    const proj = loadProject(projectId);
+    if (!proj) return res.status(404).json({ error: 'Project not found' });
+    const parts = filePath.split('/');
+    const ws = parts.length >= 3 ? parts[0] : (proj.workstream || 'General');
+    const proc = parts.length >= 3 ? parts[1] : (proj.processName || 'Process');
+    const fileName = parts[parts.length - 1];
+    const agentId = fileName.split('_v')[0];
+    const agentManifest = AGENTS[agentId];
+    const agentName = agentManifest ? agentManifest.name : agentId;
+    const saved = saveDocumentToProject(projectId, agentId, agentName, html, { ...proj, workstream: ws, processName: proc });
+    res.json({ success: true, fileName: saved });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-const rerunQueue = [];
-let rerunRunning = false;
-const completedReruns = {};
-
-function processRerunQueue() {
-  if (rerunRunning || rerunQueue.length === 0) return;
-  rerunRunning = true;
-  const job = rerunQueue.shift();
-  const { projectId, agentId, agentName, filePath, reviewComments, jobId } = job;
-  const proj = loadProject(projectId);
-  if (!proj) { rerunRunning = false; processRerunQueue(); return; }
-  const agentPromptPath = path.join(__dirname, '..', 'agents', agentId, 'prompt.md');
-  const agentPrompt = fs.existsSync(agentPromptPath) ? fs.readFileSync(agentPromptPath, 'utf8') : '';
-  // For architect, add explicit instruction to regenerate HTML only
-  const isArchitect = agentId === 'architect';
-  // Read original document content for context
-  let originalContent = '';
-  if (filePath) {
-    const origPath = require('path').join(__dirname, '../projects', projectId, filePath);
-    if (fs.existsSync(origPath)) {
-      const raw = fs.readFileSync(origPath, 'utf8');
-      // Strip HTML tags for context, keep first 3000 chars
-      originalContent = '\n\n## ORIGINAL DOCUMENT CONTENT (for reference)\n' + raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').substring(0,3000);
+app.post('/save-document', (req, res) => {
+  const { projectId, filePath, html } = req.body;
+  if (!projectId || !html) return res.status(400).json({ error: 'Missing fields' });
+  const projDir = getProjectDir(projectId);
+  let fullPath = filePath ? path.join(projDir, filePath.replace(projectId + '/', '')) : null;
+  if (!fullPath || !fs.existsSync(fullPath)) {
+    const fileName = filePath ? path.basename(filePath) : null;
+    if (fileName) {
+      const findFile = (dir) => {
+        if (!fs.existsSync(dir)) return null;
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+          if (e.isDirectory()) { const r = findFile(path.join(dir, e.name)); if (r) return r; }
+          else if (e.name === fileName) return path.join(dir, e.name);
+        }
+        return null;
+      };
+      const found = findFile(projDir);
+      if (found) fullPath = found;
     }
+  }
+  if (!fullPath) return res.status(404).json({ error: 'File not found in project' });
+  if (!fs.existsSync(path.dirname(fullPath))) fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+  fs.writeFileSync(fullPath, html, 'utf8');
+  console.log('[Save] Overwrote:', fullPath);
+  res.json({ success: true });
+})
   }
   const subPrompt = agentPrompt + '\n\n## PROJECT\nProject: ' + (proj.name||'') + '\nClient: ' + (proj.client||'') + '\n\n## REVIEWER FEEDBACK - ADDRESS ALL POINTS\n' + reviewComments + originalContent + '\n\n' + (isArchitect ? 'IMPORTANT: You must output ONLY a complete HTML document. Do NOT output AGENT_PLAN_START, RUNTIME_AGENT, or any JSON blocks. Do NOT output placeholder text like xxx. The original document content is provided above - use it as the base and make ONLY the requested changes. Output the COMPLETE improved HTML document starting with <!DOCTYPE html> and ending with </html>. Minimum 10KB of content.' : 'Regenerate the complete document making all requested changes naturally within the content. Do NOT add callout boxes or notes saying what was changed - just make the changes inline as a professional consultant would. The document should read as if written fresh, not as a revision.');
   const gitBash = process.env.GIT_BASH_PATH;
