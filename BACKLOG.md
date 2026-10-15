@@ -120,7 +120,7 @@ Prepared by: Vikram Sharma, Accenture
 | C19 | Cross-laptop sync on login/logout | Medium |
 | C22 | Project archiving / lock completed projects | Medium |
 | C23 | Knowledge base viewer in Settings | Low |
-| C24 | DocCompare — hierarchical selector (Project → Folder → File) | Medium |
+| C24 | ✅ DocCompare — hierarchical selector + WYSIWYG edit + 3-button save modal | DONE |
 | C25 | Stop individual agent without stopping orchestration | Medium |
 | C26 | Orchestration history | Low |
 
