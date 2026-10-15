@@ -469,7 +469,6 @@ app.get('/assistant-stream', async (req, res) => {
   const claudePath = process.env.CLAUDE_PATH;
   if (!gitBash || !claudePath) { send('error', 'Claude not configured'); res.end(); return; }
 
-  const { spawn } = require('child_process');
 const Orchestrator = require('./orchestrator');
   const proc = spawn(gitBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], { env: { ...process.env, HOME: process.env.HOME || process.env.USERPROFILE } });
   
@@ -715,13 +714,11 @@ app.post('/save-document', (req, res) => {
   console.log('[Save] Overwrote:', fullPath);
   res.json({ success: true });
 })
-  }
   const subPrompt = agentPrompt + '\n\n## PROJECT\nProject: ' + (proj.name||'') + '\nClient: ' + (proj.client||'') + '\n\n## REVIEWER FEEDBACK - ADDRESS ALL POINTS\n' + reviewComments + originalContent + '\n\n' + (isArchitect ? 'IMPORTANT: You must output ONLY a complete HTML document. Do NOT output AGENT_PLAN_START, RUNTIME_AGENT, or any JSON blocks. Do NOT output placeholder text like xxx. The original document content is provided above - use it as the base and make ONLY the requested changes. Output the COMPLETE improved HTML document starting with <!DOCTYPE html> and ending with </html>. Minimum 10KB of content.' : 'Regenerate the complete document making all requested changes naturally within the content. Do NOT add callout boxes or notes saying what was changed - just make the changes inline as a professional consultant would. The document should read as if written fresh, not as a revision.');
   const gitBash = process.env.GIT_BASH_PATH;
   const claudePath = process.env.CLAUDE_PATH;
   if (!gitBash || !claudePath) { completedReruns[jobId] = { done: true, error: 'Claude not configured' }; rerunRunning = false; processRerunQueue(); return; }
   const winBash = gitBash.replace(/[/]/g, '\\');
-  const { spawn } = require('child_process');
   const proc = spawn(winBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], { env: { ...process.env, HOME: process.env.USERPROFILE } });
   proc.on('error', (err) => { completedReruns[jobId] = { done: true, error: err.message }; rerunRunning = false; processRerunQueue(); });
   proc.stdin.write(subPrompt);
@@ -743,7 +740,6 @@ app.post('/save-document', (req, res) => {
     rerunRunning = false;
     processRerunQueue();
   });
-}
 
 app.post('/rerun-agent', (req, res) => {
   const { projectId, agentId, agentName, filePath, reviewComments } = req.body;
@@ -809,6 +805,7 @@ app.put('/agents/:id/prompt', (req, res) => {
 });
 require("./analyse-route")(app, AGENTS);
 
+app.post('/cleanup',(req,res)=>{res.json({success:true,removed:[]});});
 app.listen(MCP_PORT, () => {
   console.log('DeliverAI MCP Server running on port ' + MCP_PORT);
   console.log('Agents loaded: ' + Object.keys(AGENTS).length);

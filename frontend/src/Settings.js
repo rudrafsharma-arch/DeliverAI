@@ -71,7 +71,7 @@ function ActiveConnectionPicker() {
           {connections.map(c=><option key={c.id} value={c.id}>{c.name} ({c.systemType})</option>)}
         </select>
         {saving && <span style={{fontSize:11,color:'#15803d'}}>Saving...</span>}
-        <button onClick={() => setShowManager(m => mv /c/Users/vikram.f.sharma/DeliverAI-repo/knowledge/s4hana-public-cloud.md /c/Users/vikram.f.sharma/DeliverAI-repo/knowledge/sap/s4hana-public-cloud.md)} style={{padding:'6px 12px',borderRadius:7,border:'1px solid #15803d',background:'#fff',color:'#15803d',fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>{showManager ? 'Hide Manager' : 'Manage Connections'}</button>
+        <button onClick={() => setShowManager(m => !m)} style={{padding:'6px 12px',borderRadius:7,border:'1px solid #15803d',background:'#fff',color:'#15803d',fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>{showManager ? 'Hide Manager' : 'Manage Connections'}</button>
       </div>
       {showManager && <div style={{marginTop:12}}><ConnectionManager /></div>}
     </div>
