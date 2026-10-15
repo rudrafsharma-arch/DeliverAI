@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from './Toast';
 
-export default function DocCompare({ project, projects, onClose }) {
-  const [selectedProj, setSelectedProj] = React.useState(project);
-  const activeProject = selectedProj || project;
+export default function DocCompare({ project, onClose }) {
   const [docA, setDocA] = useState('');
   const [docB, setDocB] = useState('');
   const [htmlA, setHtmlA] = useState('');
@@ -11,7 +9,7 @@ export default function DocCompare({ project, projects, onClose }) {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState('side-by-side'); // side-by-side or unified
 
-  const docs = (activeProject?.documents || []).filter(d => d.filePath && d.fileName);
+  const docs = (project?.documents || []).filter(d => d.filePath && d.fileName);
 
   const loadDoc = async (filePath, setter) => {
     try {
