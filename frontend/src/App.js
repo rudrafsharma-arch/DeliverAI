@@ -15,8 +15,8 @@ const api = {
 };
 
 const BLUE = '#0070F2';
-const phaseColors = { discover:'#1a5276', explore:'#1a5c1a', realize:'#7d6608', test:'#7b241c', deploy:'#6c3483', run:'#1a4a8c' };
-const phaseBg = { discover:'#e8f4f8', explore:'#e8f8e8', realize:'#fef9e7', test:'#fdecea', deploy:'#f4ecf7', run:'#eaf2ff' };
+const phaseColors = { all:'#475569', discover:'#1d4ed8', prepare:'#7c3aed', explore:'#16a34a', realize:'#c2410c', test:'#ca8a04', deploy:'#dc2626', run:'#0369a1' };
+const phaseBg    = { all:'#f1f5f9', discover:'#eff6ff', prepare:'#faf5ff', explore:'#f0fdf4', realize:'#fff7ed', test:'#fefce8', deploy:'#fef2f2', run:'#f0f9ff' };
 
 function isConfigured(connectionId, envConfig) {
   const keyMap = {
@@ -156,6 +156,9 @@ function ProjectPanel({ projects, selected, onSelect, onCreate }) {
   );
 }
 
+
+const agentIcons = null; // use phase icons only
+
 function AgentCard({ agent, onSelect, envConfig, onConfigure }) {
   const conns = agent.requiredConnections || ['claude'];
   const allOk = conns.every(c => isConfigured(c, envConfig));
@@ -164,13 +167,13 @@ function AgentCard({ agent, onSelect, envConfig, onConfigure }) {
   const color = phaseColors[agent.phase] || '#475569';
 
   return (
-    <div style={{ background:'#fff', border:'1.5px solid ' + (allOk ? '#e2e8f0' : '#fde68a'), borderRadius:12, padding:'14px 15px', display:'flex', flexDirection:'column' }}>
+    <div style={{ background:'#fff', border:'1px solid #e8ecf0', borderRadius:14, padding:'16px', display:'flex', flexDirection:'column', transition:'all 0.18s ease', boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:7 }}>
-        <span style={{ fontSize:26 }}>{agent.icon||'ðŸ“„'}</span>
-        <span style={{ fontSize:9, padding:'2px 6px', borderRadius:8, fontWeight:600, background:bg, color }}>{agent.phase}</span>
+        <div style={{ width:36, height:36, borderRadius:10, background:bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:800, color }}>{agent.name.charAt(0).toUpperCase()}</div>
+        <span style={{ fontSize:10, padding:'3px 8px', borderRadius:20, fontWeight:700, background:bg, color, textTransform:'uppercase', letterSpacing:'0.5px' }}>{agent.phase}</span>
       </div>
-      <div style={{ fontWeight:600, fontSize:13, color:'#1e293b', marginBottom:3 }}>{agent.name}</div>
-      <div style={{ fontSize:11, color:'#94a3b8', lineHeight:1.4, marginBottom:8, flex:1 }}>{agent.description}</div>
+      <div style={{ fontWeight:700, fontSize:13, color:'#0f172a', marginBottom:4, lineHeight:'1.3' }}>{agent.name}</div>
+      <div style={{ fontSize:11, color:'#64748b', lineHeight:1.5, marginBottom:12, flex:1 }}>{agent.description}</div>
       <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:8 }}>
         {conns.map(c => <ConnectionBadge key={c} connId={c} configured={isConfigured(c, envConfig)} onConfigure={onConfigure}/>)}
       </div>
@@ -180,8 +183,8 @@ function AgentCard({ agent, onSelect, envConfig, onConfigure }) {
         </div>
       )}
       <button onClick={()=>onSelect(agent)}
-        style={{ width:'100%', padding:'7px', borderRadius:8, border:'none', background:allOk?BLUE:'#94a3b8', color:'#fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>
-        {allOk ? 'Generate' : 'Configure First'}
+        style={{ width:'100%', padding:'9px', borderRadius:8, border:'none', background:allOk?BLUE:'#94a3b8', color:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, letterSpacing:'0.2px' }}>
+        {allOk ? 'Generate →' : '⚙️ Configure First'}
       </button>
     </div>
   );
@@ -753,26 +756,25 @@ export default function App() {
                   onComplete={handleComplete} envConfig={envConfig} onConfigure={handleConfigure} onStartJob={handleStartJob}/>
               ) : (
                 <div>
-                  <div style={{ display:'flex', gap:6, marginBottom:14, flexWrap:'wrap', alignItems:'center' }}>
-                    {phases.map(p=>(
-                      <button key={p} onClick={()=>setPhase(p)}
-                        style={{ padding:'5px 12px', borderRadius:8, border:'1px solid', borderColor:phase===p?BLUE:'#e2e8f0', background:phase===p?BLUE:'#fff', color:phase===p?'#fff':'#64748b', fontSize:12, cursor:'pointer', fontWeight:phase===p?600:400 }}>
-                        {p==='all'?'All':p.charAt(0).toUpperCase()+p.slice(1)} ({p==='all'?agents.length:agents.filter(a=>a.phase===p).length})
-                      </button>
-                    ))}
-                    <input value={agentSearch} onChange={e=>setAgentSearch(e.target.value)} placeholder='🔍 Search agents...' style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #e2e8f0', fontSize:12, width:180 }} />
-                    <button onClick={()=>{ api.post(`/api/agents/reload`).then(()=>api.get(`/api/agents`).then(data=>setAgents(Array.isArray(data)?data:Object.values(data)))); }}
-                      style={{ marginLeft:'auto', padding:'5px 10px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12, color:'#64748b' }}>
-                      Reload Agents
-                    </button>
+                   <div style={{ display:'flex', gap:6, marginBottom:14, flexWrap:'wrap', alignItems:'center' }}>
+                     {phases.map(p=>{
+                       const pBg = phaseBg[p] || '#f1f5f9';
+                       const pColor = phaseColors[p] || '#475569';
+                       const isActive = phase===p;
+                       return <button key={p} onClick={()=>setPhase(p)} style={{ padding:'5px 14px', borderRadius:20, border:'2px solid', borderColor:isActive?pColor:pBg, background:pBg, color:pColor, fontSize:11, cursor:'pointer', fontWeight:isActive?800:500, transition:'all 0.15s', opacity:isActive?1:0.6, boxShadow:isActive?('0 2px 8px '+pColor+'40'):'none' }}>
+                         {p==='all'?'All Phases':(p.charAt(0).toUpperCase()+p.slice(1))} <span style={{ fontSize:10, fontWeight:400 }}>({p==='all'?agents.length:agents.filter(a=>a.phase===p).length})</span>
+                       </button>;
+                     })}
+                     <input value={agentSearch} onChange={e=>setAgentSearch(e.target.value)} placeholder='Search agents...' style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #e2e8f0', fontSize:12, width:180 }} />
+                     <button onClick={()=>{ api.post(`/api/agents/reload`).then(()=>api.get(`/api/agents`).then(data=>setAgents(Array.isArray(data)?data:Object.values(data)))); }} style={{ marginLeft:'auto', padding:'5px 10px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12, color:'#64748b' }}>Reload Agents</button>
                   </div>
                   {filtered.length===0 ? (
                     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, padding:48, textAlign:'center', color:'#94a3b8' }}>
-                      <div style={{ fontSize:32, marginBottom:10 }}>&#x1F50D;</div>
-                      <div style={{ fontSize:14 }}>No agents for this phase</div>
+                      <div style={{ fontSize:40, marginBottom:12 }}>&#x1F50D;</div>
+                      <div style={{ fontSize:14, color:'#64748b' }}>No agents match your search</div>
                     </div>
                   ) : (
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(210px,1fr))', gap:10 }}>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:14 }}>
                       {filtered.map(a=>(
                         <AgentCard key={a.id} agent={a} onSelect={setSelectedAgent} envConfig={envConfig} onConfigure={handleConfigure}/>
                       ))}
