@@ -1,4 +1,6 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import ConnectionManager from './ConnectionManager';
+import React, { useState, useEffect } from 'react';
+
 const BLUE='#0070F2',GREEN='#16a34a',RED='#dc2626',AMBER='#d97706';
 const api={get:url=>fetch(url).then(r=>r.json()),post:(url,body)=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json())};
 const SECTIONS=[
@@ -47,6 +49,35 @@ const SECTIONS=[
     {key:'SNOW_USERNAME',label:'Username',placeholder:'admin'},
     {key:'SNOW_PASSWORD',label:'Password',placeholder:'...',secret:true}]},
 ];
+function ActiveConnectionPicker() {
+  const [connections, setConnections] = React.useState([]);
+  const [activeId, setActiveId] = React.useState(null);
+  const [saving, setSaving] = React.useState(false);
+  const [showManager, setShowManager] = React.useState(false);
+  React.useEffect(() => {
+    fetch('/api/connections').then(r=>r.json()).then(d=>{ setConnections(d.connections||[]); setActiveId(d.active||null); }).catch(()=>{});
+  }, []);
+  const setActive = async (id) => {
+    setSaving(true);
+    try { await fetch('/api/connections/active',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}); setActiveId(id); } catch(e) {}
+    setSaving(false);
+  };
+  return (
+    <div style={{marginTop:16,padding:'14px 16px',background:'#f0fdf4',borderRadius:10,border:'1px solid #86efac'}}>
+      <div style={{display:'flex',alignItems:'center',gap:12}}>
+        <span style={{fontSize:13,fontWeight:700,color:'#15803d',whiteSpace:'nowrap'}}>Active Connection</span>
+        <select value={activeId||''} onChange={e=>setActive(e.target.value)} style={{flex:1,padding:'6px 10px',borderRadius:7,border:'1px solid #86efac',fontSize:13,fontWeight:600,color:'#0f172a',background:'#fff'}}>
+          <option value=''>-- None selected --</option>
+          {connections.map(c=><option key={c.id} value={c.id}>{c.name} ({c.systemType})</option>)}
+        </select>
+        {saving && <span style={{fontSize:11,color:'#15803d'}}>Saving...</span>}
+        <button onClick={() => setShowManager(m => mv /c/Users/vikram.f.sharma/DeliverAI-repo/knowledge/s4hana-public-cloud.md /c/Users/vikram.f.sharma/DeliverAI-repo/knowledge/sap/s4hana-public-cloud.md)} style={{padding:'6px 12px',borderRadius:7,border:'1px solid #15803d',background:'#fff',color:'#15803d',fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>{showManager ? 'Hide Manager' : 'Manage Connections'}</button>
+      </div>
+      {showManager && <div style={{marginTop:12}}><ConnectionManager /></div>}
+    </div>
+  );
+}
+
 function AgentPromptEditor() {
   const [agents, setAgents] = React.useState([]);
   const [selected, setSelected] = React.useState(null);
@@ -290,6 +321,7 @@ export default function Settings(){
           </button>
         </div>
       </div>
+      <ActiveConnectionPicker />
       <AgentPromptEditor />
     </div>
   );

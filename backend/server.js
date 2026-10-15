@@ -320,6 +320,95 @@ app.get('/api/rerun-status/:jobId', async (req, res) => {
     res.json(d);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// ── Connections Manager ───────────────────────────────────────────────────────
+const CONN_PATH = path.join(__dirname, '../connections.json');
+function readConns() {
+  if (!fs.existsSync(CONN_PATH)) return { active: null, connections: [] };
+  try { return JSON.parse(fs.readFileSync(CONN_PATH, 'utf8')); } catch(e) { return { active: null, connections: [] }; }
+}
+function writeConns(d) { fs.writeFileSync(CONN_PATH, JSON.stringify(d, null, 2), 'utf8'); }
+
+app.get('/api/connections', (req, res) => {
+  const d = readConns();
+  const mask = '••••••••';
+  const safe = { ...d, connections: d.connections.map(c => ({ ...c, clientSecret: c.clientSecret ? mask : '', password: c.password ? mask : '', apiKeyValue: c.apiKeyValue ? mask : '', bearerToken: c.bearerToken ? mask : '', privateKey: c.privateKey ? mask : '', certificate: c.certificate ? mask : '', samlAssertion: c.samlAssertion ? mask : '' })) };
+  res.json(safe);
+});
+
+app.post('/api/connections', (req, res) => {
+  const conn = req.body;
+  if (!conn.id || !conn.name) return res.status(400).json({ error: 'id and name required' });
+  const d = readConns();
+  const idx = d.connections.findIndex(c => c.id === conn.id);
+  const mask = '••••••••';
+  const secrets = ['clientSecret', 'password', 'apiKeyValue', 'bearerToken', 'privateKey', 'certificate', 'samlAssertion'];
+  if (idx !== -1) {
+    secrets.forEach(k => { if (conn[k] === mask) conn[k] = d.connections[idx][k] || ''; });
+    d.connections[idx] = conn;
+  } else d.connections.push(conn);
+  writeConns(d);
+  res.json({ success: true });
+});
+
+app.delete('/api/connections/:id', (req, res) => {
+  const d = readConns();
+  d.connections = d.connections.filter(c => c.id !== req.params.id);
+  if (d.active === req.params.id) d.active = d.connections[0] ? d.connections[0].id : null;
+  writeConns(d);
+  res.json({ success: true });
+});
+
+app.post('/api/connections/active', (req, res) => {
+  const { id } = req.body;
+  const d = readConns();
+  if (!d.connections.find(c => c.id === id)) return res.status(404).json({ error: 'Not found' });
+  d.active = id;
+  writeConns(d);
+  res.json({ success: true });
+});
+
+app.get('/api/connections/active', (req, res) => {
+  const d = readConns();
+  const c = d.connections.find(c => c.id === d.active);
+  if (!c) return res.status(404).json({ error: 'No active connection' });
+  res.json(c);
+});
+
+app.post('/api/connections/test', async (req, res) => {
+  const { form } = req.body;
+  if (!form) return res.status(400).json({ error: 'Missing form' });
+  try {
+    if (form.authType === 'oauth2-client' || form.authType === 'oauth2-password' || form.authType === 'oauth2-saml') {
+      const params = new URLSearchParams();
+      params.append('grant_type', form.authType === 'oauth2-password' ? 'password' : 'client_credentials');
+      params.append('client_id', form.clientId);
+      params.append('client_secret', form.clientSecret);
+      if (form.authType === 'oauth2-password') { params.append('username', form.username); params.append('password', form.password); }
+      if (form.scope) params.append('scope', form.scope);
+      const r = await fetch(form.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params });
+      if (!r.ok) { const t = await r.text(); return res.json({ success: false, message: 'Token request failed HTTP ' + r.status, details: t.substring(0, 200) }); }
+      const token = await r.json();
+      return res.json({ success: true, message: 'OAuth2 token obtained successfully', details: 'Token type: ' + token.token_type + ', expires in: ' + token.expires_in + 's' });
+    } else if (form.authType === 'basic') {
+      const r = await fetch(form.hostUrl, { headers: { Authorization: 'Basic ' + Buffer.from(form.username + ':' + form.password).toString('base64') } });
+      return res.json({ success: r.ok || r.status === 401, message: 'Basic auth test: HTTP ' + r.status, details: r.ok ? 'Connected' : 'Check credentials' });
+    } else if (form.authType === 'apikey-header') {
+      const headers = {}; headers[form.apiKeyName] = form.apiKeyValue;
+      const r = await fetch(form.hostUrl, { headers });
+      return res.json({ success: r.ok, message: 'API Key test: HTTP ' + r.status });
+    } else if (form.authType === 'bearer') {
+      const r = await fetch(form.hostUrl, { headers: { Authorization: 'Bearer ' + form.bearerToken } });
+      return res.json({ success: r.ok, message: 'Bearer token test: HTTP ' + r.status });
+    } else if (form.authType === 'none') {
+      const r = await fetch(form.hostUrl);
+      return res.json({ success: r.ok, message: 'No-auth test: HTTP ' + r.status });
+    } else {
+      return res.json({ success: false, message: 'Test not supported for auth type: ' + form.authType });
+    }
+  } catch(e) { return res.json({ success: false, message: e.message }); }
+});
+
 app.listen(PORT, () => {
   console.log('\n╔══════════════════════════════════════════════╗');
   console.log('║  DeliverAI Backend           :' + PORT + '          ║');
