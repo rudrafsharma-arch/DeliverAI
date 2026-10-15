@@ -819,6 +819,41 @@ app.put('/agents/:id/prompt', (req, res) => {
 require("./analyse-route")(app, AGENTS);
 
 app.post('/cleanup',(req,res)=>{res.json({success:true,removed:[]});});
+
+app.get('/btp-admin-run', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.flushHeaders();
+  const send = (t, d) => res.write('data: ' + JSON.stringify({type:t,...d}) + '\n\n');
+  try {
+    const cp = require('path').join(__dirname, '../connections.json');
+    if (!fs.existsSync(cp)) { send('error', {message:'No connections.json'}); res.end(); return; }
+    const conns = JSON.parse(fs.readFileSync(cp, 'utf8'));
+    const active = conns.connections.find(c => c.id === conns.active);
+    if (!active) { send('error', {message:'No active connection'}); res.end(); return; }
+    send('status', {message: 'Active: ' + active.name});
+    const gitBash = process.env.GIT_BASH_PATH;
+    const claudePath = process.env.CLAUDE_PATH;
+    if (!gitBash || !claudePath) { send('error', {message:'Claude CLI not configured'}); res.end(); return; }
+    const ap = require('path').join(__dirname, '../agents/btp-admin-agent/prompt.md');
+    const agentPrompt = fs.existsSync(ap) ? fs.readFileSync(ap, 'utf8') : '';
+    const fullPrompt = agentPrompt + '\n\nACTIVE CONNECTION: ' + active.name + '\nHost: ' + active.hostUrl + '\nTASK: ' + (req.query.task || 'Full Platform Assessment');
+    const proc = spawn(gitBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], { env: { ...process.env, HOME: process.env.HOME || process.env.USERPROFILE } });
+    let out = '';
+    proc.stdin.write(fullPrompt);
+    proc.stdin.end();
+    proc.stdout.on('data', d => { out += d.toString(); send('progress', {text: d.toString().substring(0,80)}); });
+    proc.on('close', () => {
+      const html = out.trim() || '<html><body><h1>BTP Admin</h1><p>No output from Claude</p></body></html>';
+      if (req.query.projectId && html.includes('<html')) {
+        try { const {saveDocumentToProject} = require('./doc-saver'); const proj = loadProject(req.query.projectId); if (proj) saveDocumentToProject(req.query.projectId, 'btp-admin-agent', 'SAP BTP Admin Agent', html, {...proj, workstream:'Platform', processName:'BTP-Setup'}); } catch(e) {}
+      }
+      send('complete', {html, actionsExecuted:0, succeeded:0});
+      res.end();
+    });
+    proc.on('error', e => { send('error', {message:e.message}); res.end(); });
+  } catch(e) { send('error', {message:e.message}); res.end(); }
+});
 app.listen(MCP_PORT, () => {
   console.log('DeliverAI MCP Server running on port ' + MCP_PORT);
   console.log('Agents loaded: ' + Object.keys(AGENTS).length);
