@@ -209,3 +209,63 @@ U4 Loading skeletons, U5 Document preview on hover, U6 Document version timeline
 - BTP MCP URL: https://effem-glb-is-sbx01-1b93e9be0bb349988640635ab8fd763f.a.integration.cloud.sap/mcp-server/iflow
 - BTP Token URL: https://effem-glb-is-sbx01.authentication.us10.hana.ondemand.com/oauth/token
 - CPI Trial POC only: fab78ad9trial AP21, scripts at C:\Users\vikram.f.sharma\cpi_iflows\
+
+---
+
+## AUTONOMOUS INCIDENT RESOLUTION (P6 — Enhanced)
+
+### Vision
+When a BTP iFlow fails or an S/4HANA issue occurs, DeliverAI automatically:
+1. Receives the event via webhook
+2. Fetches logs and error details from BTP MCP
+3. Reads source data from S/4HANA OData
+4. Spawns Architect + specialist subagents to correlate findings
+5. Generates RCA report + proposed fix
+6. (With approval) Deploys fix to BTP or raises Change Request in S/4HANA
+
+### Architecture
+```
+BTP Integration Suite
+  iFlow fails → webhook → DeliverAI /api/incident-event
+  BTP MCP exposes: logs, error details, iFlow design
+
+DeliverAI Incident Engine
+  Architect spawns: Incident Analyser + RCA Agent + Interface Validator
+  Correlates: BTP logs + S/4HANA source data
+  Outputs: RCA report + proposed fix + optional auto-deploy
+
+S/4HANA System
+  Source data read via OData
+  Fix applied via API or Change Request raised
+```
+
+### Backlog Items
+
+| # | Feature | Priority | Prerequisite |
+|---|---------|----------|-------------|
+| A1 | Webhook endpoint in MCP server — receives BTP incident events | High | None |
+| A2 | BTP Message Processing Logs reader — fetch error details via /api/v1/MessageProcessingLogs | High | B4 (platform team /api/v1/ access) |
+| A3 | S/4HANA OData connector — read source master/transactional data for correlation | High | S/4HANA credentials |
+| A4 | Auto-trigger Architect on incident event — spawns Incident Analyser + RCA + Interface Validator subagents | High | A1, A2 |
+| A5 | Cross-system correlation engine — correlates BTP logs + S/4HANA data to pinpoint root cause | High | A2, A3 |
+| A6 | Auto-fix generator — generates corrected iFlow or S/4HANA change request | High | A4, A5 |
+| A7 | Approval gate before auto-deploy — Responsible AI, human must approve fix before deployment | High | A6 |
+| A8 | Auto-deploy fixed iFlow to BTP via MCP (Zero-Touch) | High | A7, B6 |
+| A9 | Auto-raise Change Request in S/4HANA if fix is on source side | Medium | A7 |
+| A10 | Incident history dashboard — all past incidents, RCAs, fixes applied | Medium | A4 |
+| A11 | Proactive monitoring — poll BTP every N mins, alert before failures escalate | Medium | A2 |
+| A12 | Learning engine — learns from past incidents to predict future failures | Low | A10 |
+
+### What Is Already Built
+- Incident Analyser agent
+- Root Cause Analysis agent  
+- Architect orchestrator with subagent spawning
+- BTP MCP server (OAuth working, tools/call working)
+- Interface Design Validator agent
+- iFlow Builder agent (can generate fixed iFlow)
+
+### Immediate Blockers
+- B4: Platform team /api/v1/ access (needed for A2)
+- S/4HANA OData credentials (needed for A3)
+
+### Once B4 is resolved, A1 + A4 can be built immediately with no new dependencies.
