@@ -12,6 +12,8 @@ export default function Documents({ projects }) {
   const [deleting, setDeleting] = useState(null);
   const [regenerating, setRegenerating] = useState(null);
   const [approvalModal, setApprovalModal] = useState(null);
+  const [bulkApproving, setBulkApproving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [reviewerName, setReviewerName] = useState('');
   const [reviewComment, setReviewComment] = useState('');
   const statusColors = { success:'#94a3b8',DRAFT:'#94a3b8',IN_REVIEW:'#f59e0b',APPROVED:'#16a34a',CHANGES_REQUESTED:'#dc2626',failed:'#dc2626' };
@@ -28,6 +30,34 @@ export default function Documents({ projects }) {
       setApprovalModal(null); setReviewComment('');
     } catch(e) { toast('Failed: ' + e.message,'info'); }
   };
+
+  // Auto-refresh every 10 seconds for real-time updates
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const fresh = await fetch('/api/projects').then(r => r.json());
+        if (Array.isArray(fresh) && selectedProject) {
+          const updated = fresh.find(p => p.id === selectedProject.id);
+          if (updated) { setSelectedProject(updated); buildFolderTree(updated); }
+        }
+      } catch(e) {}
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [selectedProject?.id]);
+
+  // Fast auto-refresh every 10 seconds - Bug-4 fix
+  useEffect(() => {
+    const iv = setInterval(async () => {
+      try {
+        const fresh = await fetch('/api/projects').then(r=>r.json());
+        if (Array.isArray(fresh) && selectedProject) {
+          const upd = fresh.find(p=>p.id===selectedProject.id);
+          if (upd) { setSelectedProject(upd); buildFolderTree(upd); }
+        }
+      } catch(e) {}
+    }, 10000);
+    return () => clearInterval(iv);
+  }, [selectedProject?.id]);
 
   // Auto-refresh selected project every 30 seconds (for real-time updates during orchestration)
   useEffect(() => {
@@ -102,6 +132,43 @@ export default function Documents({ projects }) {
 
   const toggleFolder = (key) => setExpandedFolders(e => ({ ...e, [key]: !e[key] }));
 
+  const bulkApproveFolder = async (workstream, procName) => {
+    if (!selectedProject) return;
+    const proj = await fetch('/api/projects').then(r=>r.json()).then(ps=>ps.find(p=>p.id===selectedProject.id));
+    if (!proj) return;
+    const KNOWN_WS = ['OTC','P2P','MFG','RTR','HCM','SCM','FI','MM','SD','HR','EWM','TM','General','Other'];
+    const toApprove = (proj.documents||[]).filter(d => {
+      const fp = d.filePath||d.fileName; if (!fp) return false;
+      const clean = fp.startsWith(proj.id+'/') ? fp.slice(proj.id.length+1) : fp;
+      const parts = clean.split('/');
+      const wsIdx = parts.findIndex(p=>KNOWN_WS.some(w=>w.toLowerCase()===p.toLowerCase()));
+      const si = wsIdx>=0 ? wsIdx : 0;
+      const docWs = parts[si]||''; const docProc = parts[si+1]||'';
+      const match = procName ? docWs===workstream&&docProc===procName : docWs===workstream;
+      return match && d.status !== 'APPROVED';
+    });
+    if (toApprove.length===0) { toast('No pending documents in this folder','info'); return; }
+    if (!window.confirm('Bulk approve '+toApprove.length+' documents in '+workstream+(procName?'/'+procName:'')+'?')) return;
+    setBulkApproving(true);
+    let count=0;
+    for (const doc of toApprove) {
+      try {
+        await fetch('/api/documents/'+selectedProject.id+'/status', {
+          method:'PUT', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({fileName:doc.fileName,filePath:doc.filePath,status:'APPROVED',reviewer:'Bulk Approve',comment:'Bulk approved'})
+        });
+        count++;
+      } catch(e) {}
+    }
+    setBulkApproving(false);
+    toast('Approved '+count+' documents','success');
+    const fresh = await fetch('/api/projects').then(r=>r.json());
+    if (Array.isArray(fresh)) {
+      const upd = fresh.find(p=>p.id===selectedProject.id);
+      if (upd) { setSelectedProject(upd); buildFolderTree(upd); }
+    }
+  };
+
   const deleteFolder = async (workstream, procName) => {
     if (!window.confirm('Delete all documents in ' + workstream + (procName ? ' / ' + procName : '') + '? This cannot be undone.')) return;
     const proj = selectedProject;
@@ -110,8 +177,10 @@ export default function Documents({ projects }) {
       if (!fp) return false;
       const clean = fp.startsWith(proj.id + '/') ? fp.slice(proj.id.length + 1) : fp;
       const parts = clean.split('/');
-      // Direct match: workstream is first folder, process is second
-      const docWs = parts[0] || '';
+      const KNOWN_WS2=['OTC','P2P','MFG','RTR','HCM','SCM','FI','MM','SD','HR','EWM','TM','General','Other'];
+      const wsIdx2=parts.findIndex(p=>KNOWN_WS2.some(w=>w.toLowerCase()===p.toLowerCase()));
+      const si2=wsIdx2>=0?wsIdx2:0;
+      const docWs=parts[si2]||''
       const docProc = parts[1] || '';
       if (procName) return docWs === workstream && docProc === procName;
       return docWs === workstream;
@@ -179,7 +248,8 @@ export default function Documents({ projects }) {
         {selectedProject ? (
           <>
             <div style={{ marginBottom:16 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}><div style={{ fontSize:16, fontWeight:700, color:'#1e293b' }}>{selectedProject.name}</div><button onClick={() => fetch('/api/projects').then(r=>r.json()).then(data=>{const p=data.find(x=>x.id===selectedProject.id);if(p){setSelectedProject(p);buildFolderTree(p);}})} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:11, color:'#64748b' }}>↺ Refresh</button></div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}><div style={{ fontSize:16, fontWeight:700, color:'#1e293b' }}>{selectedProject.name}</div>
+                <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder='🔍 Search documents...' style={{ padding:'4px 10px', borderRadius:6, border:'1px solid #e2e8f0', fontSize:12, width:200 }} /><button onClick={() => fetch('/api/projects').then(r=>r.json()).then(data=>{const p=data.find(x=>x.id===selectedProject.id);if(p){setSelectedProject(p);buildFolderTree(p);}})} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:11, color:'#64748b' }}>↺ Refresh</button></div>
               <div style={{ fontSize:12, color:'#64748b' }}>{selectedProject.client}{' · '}{(selectedProject.documents||[]).length} documents</div>
             </div>
             {Object.keys(folderTree).length === 0 && <div style={{ color:'#94a3b8', fontSize:13, textAlign:'center', marginTop:40 }}>No documents yet.</div>}
@@ -214,7 +284,8 @@ export default function Documents({ projects }) {
                           <span>{expandedFolders[procKey] ? '▼' : '▶'}</span>
                           <span>📂 {process}</span>
                           <span style={{ fontSize:10, color:'#94a3b8', fontWeight:400 }}>({docs.length} files)</span>
-                          <button onClick={(e) => { e.stopPropagation(); deleteFolder(workstream, procName); }} style={{ marginLeft:'auto', padding:'2px 8px', borderRadius:4, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:10 }}>Delete Folder</button>
+                          <button onClick={(e) => { e.stopPropagation(); bulkApproveFolder(workstream, process); }} disabled={bulkApproving} style={{ marginLeft:4, padding:'3px 8px', borderRadius:5, border:'1px solid #16a34a', background:'#fff', color:'#16a34a', cursor:'pointer', fontSize:11 }}>✓ Approve All</button>
+                          <button onClick={(e) => { e.stopPropagation(); deleteFolder(workstream, process); }} style={{ marginLeft:'auto', padding:'2px 8px', borderRadius:4, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:10 }}>Delete Folder</button>
                         </div>
                         {expandedFolders[procKey] && docs.map((doc, i) => (
                           <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', borderRadius:6, marginBottom:3, marginLeft:16, marginTop:3, background:'#fff', border:'1px solid #e2e8f0' }}>

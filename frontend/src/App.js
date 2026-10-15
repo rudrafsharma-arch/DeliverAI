@@ -590,8 +590,12 @@ export default function App() {
   }, []);
 
   const phases = ['all','discover','prepare','explore','realize','test','deploy','run'];
-  const filtered = phase==='all' ? agents : agents.filter(a=>a.phase===phase);
-
+  const [agentSearch, setAgentSearch] = useState('');
+  const filtered = agents.filter(a => {
+    const phaseMatch = phase==='all' || a.phase===phase;
+    const searchMatch = !agentSearch || (a.name||'').toLowerCase().includes(agentSearch.toLowerCase()) || (a.description||'').toLowerCase().includes(agentSearch.toLowerCase());
+    return phaseMatch && searchMatch;
+  });
   const handleComplete = () => {
     api.get("/api/projects").then(safeSetProjects).catch(()=>{});
     if (selectedProject) api.get('/api/projects/'+selectedProject.id).then(setSelectedProject).catch(()=>{});
@@ -756,6 +760,7 @@ export default function App() {
                         {p==='all'?'All':p.charAt(0).toUpperCase()+p.slice(1)} ({p==='all'?agents.length:agents.filter(a=>a.phase===p).length})
                       </button>
                     ))}
+                    <input value={agentSearch} onChange={e=>setAgentSearch(e.target.value)} placeholder='🔍 Search agents...' style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #e2e8f0', fontSize:12, width:180 }} />
                     <button onClick={()=>{ api.post(`/api/agents/reload`).then(()=>api.get(`/api/agents`).then(data=>setAgents(Array.isArray(data)?data:Object.values(data)))); }}
                       style={{ marginLeft:'auto', padding:'5px 10px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12, color:'#64748b' }}>
                       Reload Agents
