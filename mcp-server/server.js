@@ -1,5 +1,151 @@
 ﻿require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const express = require('express');
+// BTP Integration Suite MCP connection
+async function fetchBTPiFlows() {
+  try {
+    const https = require('https');
+    const env = require('dotenv').config({ path: require('path').join(__dirname, '../.env') }).parsed || {};
+    const clientId = env.BTP_CLIENT_ID;
+    const clientSecret = env.BTP_CLIENT_SECRET;
+    const tokenUrl = env.BTP_TOKEN_URL;
+    const mcpUrl = env.BTP_MCP_URL;
+    if (!clientId || !clientSecret || !tokenUrl || !mcpUrl) return '';
+
+    const urlObj = new URL(tokenUrl);
+    const mcpObj = new URL(mcpUrl);
+
+    // Get token
+    const token = await new Promise((resolve, reject) => {
+      const body = 'grant_type=client_credentials&client_id=' + encodeURIComponent(clientId) + '&client_secret=' + encodeURIComponent(clientSecret);
+      const req = https.request({
+        hostname: urlObj.hostname, path: urlObj.pathname, method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }, res => {
+        let d = '';
+        res.on('data', c => d += c);
+        res.on('end', () => { try { resolve(JSON.parse(d).access_token); } catch(e) { reject(e); } });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+    if (!token) return '';
+
+    // Call MCP to list iFlows
+    const payload = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_IntegrationDesigntimeArtifacts', arguments: { top: 100, format: 'json' } } });
+    const result = await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: mcpObj.hostname, path: mcpObj.pathname, method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'Content-Length': Buffer.byteLength(payload) }
+      }, res => {
+        let data = '';
+        res.on('data', c => data += c.toString());
+        res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(e); } });
+      });
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+
+    const content = result.result && result.result.content;
+    if (!content || !content[0]) return '';
+    const iflowData = JSON.parse(content[0].text || '{}');
+    const iflows = (iflowData.d && iflowData.d.results) || [];
+    if (iflows.length === 0) return '';
+
+    let context = '\n\n## LIVE BTP INTEGRATION SUITE DATA\n';
+    context += 'The following iFlows are ALREADY DEPLOYED in the client tenant (fetched live):\n';
+    const byPackage = {};
+    iflows.forEach(f => {
+      if (!byPackage[f.PackageId]) byPackage[f.PackageId] = [];
+      byPackage[f.PackageId].push(f.Id + ' | ' + f.Name + ' | v' + f.Version);
+    });
+    Object.entries(byPackage).forEach(([pkg, flows]) => {
+      context += '\nPackage: ' + pkg + '\n';
+      flows.forEach(f => context += '  - ' + f + '\n');
+    });
+    context += '\nUse this live data to: avoid duplicates, follow existing naming patterns, reference actual package names.';
+    console.log('[BTP] Fetched', iflows.length, 'live iFlows from tenant');
+    return context;
+  } catch(e) {
+    console.log('[BTP] Could not fetch live iFlows:', e.message);
+    return '';
+  }
+}
+
+// BTP Integration Suite MCP connection
+async function fetchBTPiFlows() {
+  try {
+    const https = require('https');
+    const env = require('dotenv').config({ path: require('path').join(__dirname, '../.env') }).parsed || {};
+    const clientId = env.BTP_CLIENT_ID;
+    const clientSecret = env.BTP_CLIENT_SECRET;
+    const tokenUrl = env.BTP_TOKEN_URL;
+    const mcpUrl = env.BTP_MCP_URL;
+    if (!clientId || !clientSecret || !tokenUrl || !mcpUrl) return '';
+
+    const urlObj = new URL(tokenUrl);
+    const mcpObj = new URL(mcpUrl);
+
+    // Get token
+    const token = await new Promise((resolve, reject) => {
+      const body = 'grant_type=client_credentials&client_id=' + encodeURIComponent(clientId) + '&client_secret=' + encodeURIComponent(clientSecret);
+      const req = https.request({
+        hostname: urlObj.hostname, path: urlObj.pathname, method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }, res => {
+        let d = '';
+        res.on('data', c => d += c);
+        res.on('end', () => { try { resolve(JSON.parse(d).access_token); } catch(e) { reject(e); } });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+    if (!token) return '';
+
+    // Call MCP to list iFlows
+    const payload = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_IntegrationDesigntimeArtifacts', arguments: { top: 100, format: 'json' } } });
+    const result = await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: mcpObj.hostname, path: mcpObj.pathname, method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'Content-Length': Buffer.byteLength(payload) }
+      }, res => {
+        let data = '';
+        res.on('data', c => data += c.toString());
+        res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(e); } });
+      });
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+
+    const content = result.result && result.result.content;
+    if (!content || !content[0]) return '';
+    const iflowData = JSON.parse(content[0].text || '{}');
+    const iflows = (iflowData.d && iflowData.d.results) || [];
+    if (iflows.length === 0) return '';
+
+    let context = '\n\n## LIVE BTP INTEGRATION SUITE DATA\n';
+    context += 'The following iFlows are ALREADY DEPLOYED in the client tenant (fetched live):\n';
+    const byPackage = {};
+    iflows.forEach(f => {
+      if (!byPackage[f.PackageId]) byPackage[f.PackageId] = [];
+      byPackage[f.PackageId].push(f.Id + ' | ' + f.Name + ' | v' + f.Version);
+    });
+    Object.entries(byPackage).forEach(([pkg, flows]) => {
+      context += '\nPackage: ' + pkg + '\n';
+      flows.forEach(f => context += '  - ' + f + '\n');
+    });
+    context += '\nUse this live data to: avoid duplicates, follow existing naming patterns, reference actual package names.';
+    console.log('[BTP] Fetched', iflows.length, 'live iFlows from tenant');
+    return context;
+  } catch(e) {
+    console.log('[BTP] Could not fetch live iFlows:', e.message);
+    return '';
+  }
+}
+
 const cors = require('cors');
 const { spawn } = require('child_process');
 const Orchestrator = require('./orchestrator');
@@ -107,7 +253,7 @@ function listProjects() {
 }
 
 // Build prompt with context grounding + knowledge base
-function buildPrompt(agent, formData, projectId) {
+async function buildPrompt(agent, formData, projectId) {
   const agentPrompt = agent.prompt || DEFAULT_PROMPTS[agent.id] || DEFAULT_PROMPTS['functional-spec'];
   const knowledge = loadKnowledge(agent.knowledge || []);
 
@@ -236,17 +382,17 @@ app.get('/projects/:id/files', (req, res) => {
 });
 
 // Human-in-the-loop preview
-app.post('/preview', (req, res) => {
+app.post('/preview', async (req, res) => {
   const { agentId, formData, projectId } = req.body;
   const agent = AGENTS[agentId];
   if (!agent) return res.status(404).json({ error:'Agent not found' });
-  const prompt = buildPrompt(agent, formData, projectId);
+  const prompt = await buildPrompt(agent, formData, projectId);
   const context = projectId ? loadProjectContext(projectId) : {};
   res.json({ agentId, agentName:agent.name, promptPreview:prompt.substring(0,500)+'...', promptLength:prompt.length, contextKeys:Object.keys(context), previousAgents:agent.inputs?.fromAgents||[], estimatedTime:'1-3 minutes' });
 });
 
 // SSE Generation
-app.get('/generate-stream', (req, res) => {
+app.get('/generate-stream', async (req, res) => {
   const { agentId, projectId, ...formData } = req.query;
   const agent = AGENTS[agentId];
   if (!agent) { res.status(400).end('Agent not found'); return; }
@@ -258,7 +404,7 @@ app.get('/generate-stream', (req, res) => {
   res.flushHeaders();
 
   const send = (type, data) => { if (!res.writableEnded) res.write(`data: ${JSON.stringify({ type, data })}\n\n`); };
-  const prompt = buildPrompt(agent, formData, projectId);
+  const prompt = await buildPrompt(agent, formData, projectId);
 
   console.log(`[MCP] Generating ${agentId} for: ${formData.projectName}`);
   send('status', `Starting ${agent.name}...`);
