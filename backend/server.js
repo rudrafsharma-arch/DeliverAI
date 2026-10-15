@@ -1,4 +1,4 @@
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+﻿require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -376,8 +376,8 @@ app.get('/api/connections/active', (req, res) => {
 });
 
 app.post('/api/connections/test', async (req, res) => {
-  const { form } = req.body;
-  if (!form) return res.status(400).json({ error: 'Missing form' });
+  let { form } = req.body;
+  if (!form) return res.status(400).json({ error: 'Missing form' });   if (form.id) { const d = readConns(); const real = d.connections.find(c => c.id === form.id); if (real) form = { ...form, ...real }; }
   try {
     if (form.authType === 'oauth2-client' || form.authType === 'oauth2-password' || form.authType === 'oauth2-saml') {
       const params = new URLSearchParams();

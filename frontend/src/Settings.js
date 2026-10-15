@@ -18,7 +18,7 @@ const SECTIONS=[
     {key:'GITHUB_USER',label:'Username',placeholder:'your-github-username'},
     {key:'DATA_REPO',label:'Private Data Repo URL',placeholder:'https://github.com/your-org/DeliverAI-data',help:'Private repo for knowledge base and projects. e.g. https://github.com/rudrafsharma-arch/DeliverAI-data'},
     {key:'DATA_REPO_TOKEN',label:'Data Repo Token',placeholder:'ghp_...',secret:true,help:'GitHub token with access to private data repo. Can be same as GitHub Token above.'}]},
-  {id:'btp',label:'SAP BTP',icon:'BTP',required:false,fields:[]},
+  {id:'btp',label:'SAP BTP',icon:'☁️',required:false,fields:[]},
   {id:'s4',label:'SAP S/4HANA',icon:'🏢',required:false,fields:[
     {key:'S4_HOST',label:'Host URL',placeholder:'https://your-s4-host.com'},
     {key:'S4_USERNAME',label:'Username',placeholder:'RFC_USER'},
