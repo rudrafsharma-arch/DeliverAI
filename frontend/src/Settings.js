@@ -18,11 +18,7 @@ const SECTIONS=[
     {key:'GITHUB_USER',label:'Username',placeholder:'your-github-username'},
     {key:'DATA_REPO',label:'Private Data Repo URL',placeholder:'https://github.com/your-org/DeliverAI-data',help:'Private repo for knowledge base and projects. e.g. https://github.com/rudrafsharma-arch/DeliverAI-data'},
     {key:'DATA_REPO_TOKEN',label:'Data Repo Token',placeholder:'ghp_...',secret:true,help:'GitHub token with access to private data repo. Can be same as GitHub Token above.'}]},
-  {id:'btp',label:'SAP BTP',icon:'☁️',required:false,fields:[
-    {key:'BTP_TOKEN_URL',label:'Token URL',placeholder:'https://tenant.authentication.eu10.hana.ondemand.com/oauth/token',help:'From BTP Cockpit Service Key'},
-    {key:'BTP_CLIENT_ID',label:'Client ID',placeholder:'sb-...'},
-    {key:'BTP_CLIENT_SECRET',label:'Client Secret',placeholder:'...',secret:true},
-    {key:'BTP_CPI_HOST',label:'CPI Host',placeholder:'https://tenant.it-cpi010.cfapps.eu10.hana.ondemand.com'}]},
+  {id:'btp',label:'SAP BTP',icon:'BTP',required:false,fields:[]},
   {id:'s4',label:'SAP S/4HANA',icon:'🏢',required:false,fields:[
     {key:'S4_HOST',label:'Host URL',placeholder:'https://your-s4-host.com'},
     {key:'S4_USERNAME',label:'Username',placeholder:'RFC_USER'},
@@ -301,7 +297,8 @@ export default function Settings(){
                 </div>);
               })}
             </div>
-            {tests[activeSection]&&(
+            {activeSection==='btp' && <ActiveConnectionPicker />}
+          {tests[activeSection]&&(
               <div style={{marginTop:12,padding:'8px 12px',borderRadius:8,background:tests[activeSection].success?'#f0fdf4':'#fef2f2',border:'1px solid',borderColor:tests[activeSection].success?'#86efac':'#fecaca',fontSize:12,color:tests[activeSection].success?GREEN:RED}}>
                 {tests[activeSection].success?'Connected':'Failed'}: {tests[activeSection].message}
               </div>
@@ -321,7 +318,6 @@ export default function Settings(){
           </button>
         </div>
       </div>
-      <ActiveConnectionPicker />
       <AgentPromptEditor />
     </div>
   );

@@ -382,11 +382,16 @@ app.post('/api/connections/test', async (req, res) => {
     if (form.authType === 'oauth2-client' || form.authType === 'oauth2-password' || form.authType === 'oauth2-saml') {
       const params = new URLSearchParams();
       params.append('grant_type', form.authType === 'oauth2-password' ? 'password' : 'client_credentials');
-      params.append('client_id', form.clientId);
-      params.append('client_secret', form.clientSecret);
       if (form.authType === 'oauth2-password') { params.append('username', form.username); params.append('password', form.password); }
       if (form.scope) params.append('scope', form.scope);
-      const r = await fetch(form.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params });
+      const hdrs = { 'Content-Type': 'application/x-www-form-urlencoded' };
+      if (form.clientSecret) {
+        params.append('client_id', form.clientId);
+        params.append('client_secret', form.clientSecret);
+      } else {
+        hdrs['Authorization'] = 'Basic ' + Buffer.from(form.clientId + ':').toString('base64');
+      }
+      const r = await fetch(form.tokenUrl, { method: 'POST', headers: hdrs, body: params });
       if (!r.ok) { const t = await r.text(); return res.json({ success: false, message: 'Token request failed HTTP ' + r.status, details: t.substring(0, 200) }); }
       const token = await r.json();
       return res.json({ success: true, message: 'OAuth2 token obtained successfully', details: 'Token type: ' + token.token_type + ', expires in: ' + token.expires_in + 's' });
