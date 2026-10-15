@@ -594,6 +594,7 @@ export default function App() {
 
   const phases = ['all','discover','prepare','explore','realize','test','deploy','run'];
   const [agentSearch, setAgentSearch] = useState('');
+  const [reloadingAgents, setReloadingAgents] = useState(false);
   const filtered = agents.filter(a => {
     const phaseMatch = phase==='all' || a.phase===phase;
     const searchMatch = !agentSearch || (a.name||'').toLowerCase().includes(agentSearch.toLowerCase()) || (a.description||'').toLowerCase().includes(agentSearch.toLowerCase());
@@ -721,7 +722,7 @@ export default function App() {
         {view === 'activity' ? (
           <div style={{ flex:1 }}><Activity onChainAgent={handleChainAgent} projects={projects} /></div>
         ) : view === 'documents' ? (
-          <div style={{ flex:1, display:'flex', flexDirection:'column' }}><div style={{ padding:'8px 16px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'flex-end' }}><button onClick={() => setShowCompare(true)} style={{ padding:'5px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12, color:'#64748b' }}>📊 Compare Docs</button></div><Documents projects={projects} /></div>
+          <div style={{ flex:1, display:'flex', flexDirection:'column' }}><div style={{ padding:'8px 16px', background:'#f8fafc', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'flex-end' }}><button onClick={() => { if(!selectedProject){alert('Please select a project first');return;} setShowCompare(true); }} style={{ padding:'5px 12px', borderRadius:6, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12, color:'#64748b' }}>📊 Compare Docs</button></div><Documents projects={projects} /></div>
         ) : view === 'settings' ? (
           <div style={{ flex:1 }}><Settings /></div>
         ) : view==='review' ? (
@@ -766,7 +767,7 @@ export default function App() {
                        </button>;
                      })}
                      <input value={agentSearch} onChange={e=>setAgentSearch(e.target.value)} placeholder='Search agents...' style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #e2e8f0', fontSize:12, width:180 }} />
-                     <button onClick={()=>{ api.post(`/api/agents/reload`).then(()=>api.get(`/api/agents`).then(data=>setAgents(Array.isArray(data)?data:Object.values(data)))); }} style={{ marginLeft:'auto', padding:'5px 10px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', fontSize:12, color:'#64748b' }}>Reload Agents</button>
+                     <button onClick={()=>{ setReloadingAgents(true); api.post(`/api/agents/reload`).then(()=>api.get(`/api/agents`).then(data=>{ setAgents(Array.isArray(data)?data:Object.values(data)); setReloadingAgents(false); toast('Agents reloaded: '+(Array.isArray(data)?data.length:Object.values(data).length)+' agents','success'); })).catch(()=>setReloadingAgents(false)); }} disabled={reloadingAgents} style={{ marginLeft:'auto', padding:'5px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:reloadingAgents?'#f1f5f9':'#fff', cursor:'pointer', fontSize:12, color:'#64748b', display:'flex', alignItems:'center', gap:4 }}>{reloadingAgents ? <><span style={{ display:'inline-block', width:10, height:10, border:'2px solid #cbd5e1', borderTopColor:'#0070F2', borderRadius:'50%', animation:'spin 0.7s linear infinite' }}></span> Reloading...</> : 'Reload Agents'}</button>
                   </div>
                   {filtered.length===0 ? (
                     <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, padding:48, textAlign:'center', color:'#94a3b8' }}>
@@ -832,7 +833,7 @@ export default function App() {
       </div>
     </div>
     <ToastContainer />
-    {showCompare && selectedProject && <DocCompare project={selectedProject} onClose={() => setShowCompare(false)} />}
+    {showCompare && <DocCompare project={selectedProject || (projects&&projects[0])} projects={projects} onClose={() => setShowCompare(false)} />}
   </>
   );
 }
