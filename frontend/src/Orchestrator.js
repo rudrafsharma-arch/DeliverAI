@@ -20,6 +20,14 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
   const [viewingDoc, setViewingDoc] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [extraAgents, setExtraAgents] = useState('');
+  const [valPackages, setValPackages] = useState([{packageName:'',iflows:['']}]);
+  const [namingConvFile, setNamingConvFile] = useState(null);
+  const addValPkg = () => setValPackages(p=>[...p,{packageName:'',iflows:['']}]);
+  const remValPkg = (i) => setValPackages(p=>p.filter((_,idx)=>idx!==i));
+  const updValPkg = (i,v) => setValPackages(p=>p.map((pkg,idx)=>idx===i?{...pkg,packageName:v}:pkg));
+  const addValIflow = (pi) => setValPackages(p=>p.map((pkg,idx)=>idx===pi?{...pkg,iflows:[...pkg.iflows,'']}:pkg));
+  const remValIflow = (pi,ii) => setValPackages(p=>p.map((pkg,idx)=>idx===pi?{...pkg,iflows:pkg.iflows.filter((_,i)=>i!==ii)}:pkg));
+  const updValIflow = (pi,ii,v) => setValPackages(p=>p.map((pkg,idx)=>idx===pi?{...pkg,iflows:pkg.iflows.map((f,i)=>i===ii?v:f)}:pkg));
   const [analyseChunks, setAnalyseChunks] = useState('');
   const [runtimeAgents] = useState([]);
   const messagesEndRef = useRef(null);
@@ -86,7 +94,11 @@ export default function Orchestrator({ projects, onClose, orchState, orchMessage
     }
     setStep('running');
     const resolvedWorkstream = formData.workstream === 'Other' ? (formData.customWorkstream || 'Other') : formData.workstream;
-    onStart({ ...formData, workstream: resolvedWorkstream, agentPlan: JSON.stringify(finalAgents) }, selectedProject);
+    const packagesStr = valPackages.some(p=>p.packageName) ?
+      '\n\n## PACKAGES & IFLOWS TO VALIDATE\n' + valPackages.filter(p=>p.packageName).map(p=>
+        '### Package: '+p.packageName+'\n'+p.iflows.filter(f=>f).map(f=>'- iFlow: '+f).join('\n')
+      ).join('\n') : '';
+    onStart({ ...formData, workstream: resolvedWorkstream, agentPlan: JSON.stringify(finalAgents), validationPackages: packagesStr }, selectedProject);
   };
 
   const toggleAgent = (agentId) => {
