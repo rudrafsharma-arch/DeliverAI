@@ -202,6 +202,9 @@ function loadAgents() {
 }
 
 let AGENTS = loadAgents();
+let rerunQueue = [];
+let rerunRunning = false;
+const completedReruns = {};
 
 // Default prompts for agents without prompt.md
 const DEFAULT_PROMPTS = {
