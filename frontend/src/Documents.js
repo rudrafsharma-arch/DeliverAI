@@ -133,23 +133,19 @@ export default function Documents({ projects }) {
 
   const toggleFolder = (key) => setExpandedFolders(e => ({ ...e, [key]: !e[key] }));
 
-  const bulkApproveFolder = async (workstream, procName) => {
+  const bulkApproveFolder = async (folderPath) => {
     if (!selectedProject) return;
-    const proj = await fetch('/api/projects').then(r=>r.json()).then(ps=>ps.find(p=>p.id===selectedProject.id));
+    const projs = await fetch('/api/projects').then(r=>r.json());
+    const proj = Array.isArray(projs) ? projs.find(p=>p.id===selectedProject.id) : selectedProject;
     if (!proj) return;
-    const KNOWN_WS = ['OTC','P2P','MFG','RTR','HCM','SCM','FI','MM','SD','HR','EWM','TM','General','Other'];
+    const prefix = folderPath + '/';
     const toApprove = (proj.documents||[]).filter(d => {
-      const fp = d.filePath||d.fileName; if (!fp) return false;
+      const fp = d.filePath||d.fileName||'';
       const clean = fp.startsWith(proj.id+'/') ? fp.slice(proj.id.length+1) : fp;
-      const parts = clean.split('/');
-      const wsIdx = parts.findIndex(p=>KNOWN_WS.some(w=>w.toLowerCase()===p.toLowerCase()));
-      const si = wsIdx>=0 ? wsIdx : 0;
-      const docWs = parts[si]||''; const docProc = parts[si+1]||'';
-      const match = procName ? docWs===workstream&&docProc===procName : docWs===workstream;
-      return match && d.status !== 'APPROVED';
+      return clean.startsWith(prefix) && d.status !== 'APPROVED';
     });
-    if (toApprove.length===0) { toast('No pending documents in this folder','info'); return; }
-    if (!window.confirm('Bulk approve '+toApprove.length+' documents in '+workstream+(procName?'/'+procName:'')+'?')) return;
+    if (toApprove.length===0) { toast('No pending documents in '+folderPath,'info'); return; }
+    if (!window.confirm('Bulk approve '+toApprove.length+' documents in '+folderPath+'?')) return;
     setBulkApproving(true);
     let count=0;
     for (const doc of toApprove) {
@@ -170,7 +166,7 @@ export default function Documents({ projects }) {
     }
   };
 
-  const deleteFolder = async (folderPath) => {
+    const deleteFolder = async (folderPath) => {
     if (!window.confirm("Delete all documents in " + folderPath + "? This cannot be undone.")) return;
     const projs = await fetch("/api/projects").then(r=>r.json());
     const proj = Array.isArray(projs) ? projs.find(p=>p.id===selectedProject.id) : selectedProject;
@@ -282,7 +278,7 @@ export default function Documents({ projects }) {
                           <span>{expandedFolders[procKey] ? '▼' : '▶'}</span>
                           <span>📂 {process}</span>
                           <span style={{ fontSize:10, color:'#94a3b8', fontWeight:400 }}>({docs.length} files)</span>
-                          <button onClick={(e) => { e.stopPropagation(); bulkApproveFolder(workstream, process); }} disabled={bulkApproving} style={{ marginLeft:4, padding:'3px 8px', borderRadius:5, border:'1px solid #16a34a', background:'#fff', color:'#16a34a', cursor:'pointer', fontSize:11 }}>✓ Approve All</button>
+                          <button onClick={(e) => { e.stopPropagation(); bulkApproveFolder(workstream + "/" + process); }} disabled={bulkApproving} style={{ marginLeft:4, padding:'3px 8px', borderRadius:5, border:'1px solid #16a34a', background:'#fff', color:'#16a34a', cursor:'pointer', fontSize:11 }}>✓ Approve All</button>
                           <button onClick={(e) => { e.stopPropagation(); deleteFolder(workstream + "/" + process); }} style={{ marginLeft:'auto', padding:'2px 8px', borderRadius:4, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:10 }}>Delete Folder</button>
                         </div>
                         {expandedFolders[procKey] && docs.map((doc, i) => (
