@@ -674,20 +674,20 @@ export default function App() {
   };
 
   return (<>
-    <div style={{ fontFamily:'Inter, Segoe UI, Arial, sans-serif', minHeight:'100vh', background:'#f1f5f9', color:'#0f172a', display:'flex', flexDirection:'column' }}>
-      <header style={{ background:'#fff', borderBottom:'1px solid #e2e8f0', padding:'0 20px', position:'sticky', top:0, zIndex:100 }}>
-        <div style={{ maxWidth:1400, margin:'0 auto', display:'flex', alignItems:'center', height:54, gap:14 }}>
+    <div style={{ fontFamily:'Inter, Segoe UI, Arial, sans-serif', minHeight:'100vh', background:'#f8fafc', color:'#0f172a', display:'flex', flexDirection:'column' }}>
+      <header style={{ background:'#ffffff', borderBottom:'1px solid #e2e8f0', padding:'0 24px', position:'sticky', top:0, zIndex:100, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div style={{ maxWidth:1400, margin:'0 auto', display:'flex', alignItems:'center', height:58, gap:16 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ background:BLUE, color:'#fff', fontWeight:800, fontSize:11, padding:'4px 8px', borderRadius:5 }}>D</div>
+            <div style={{ background:BLUE, color:'#fff', fontWeight:900, fontSize:13, padding:'6px 10px', borderRadius:8, boxShadow:'0 2px 8px rgba(0,112,242,0.25)' }}>D</div>
             <div>
-              <div style={{ fontWeight:700, fontSize:14 }}>{config?.app?.name||'DeliverAI'}</div>
+              <div style={{ fontWeight:800, fontSize:15 }}>{config?.app?.name||'DeliverAI'}</div>
               <div style={{ fontSize:10, color:'#94a3b8' }}>{config?.app?.tagline||'AI agents for every project phase'}</div>
             </div>
           </div>
           <nav style={{ display:'flex', gap:2, marginLeft:8 }}>
             {['agents','activity','documents','review','settings'].map(v=>(
               <button key={v} onClick={()=>{ setView(v); setSelectedAgent(null); }}
-                style={{ background:view===v?'#e8f2ff':'none', color:view===v?BLUE:'#64748b', border:'none', borderRadius:6, padding:'5px 12px', fontSize:13, cursor:'pointer', fontWeight:view===v?600:400 }}>
+                style={{ background:'none', color:view===v?BLUE:'#64748b', border:'none', borderBottom:view===v?'2px solid #0070F2':'2px solid transparent', borderRadius:0, padding:'16px 14px 14px', fontSize:13, cursor:'pointer', fontWeight:view===v?600:400 }}>
                 {v==='agents'?'Agents':v==='activity'?'Activity'+(runningCount>0?' ('+runningCount+')':''):v==='documents'?'Documents':(v==='review'?'Review':'Settings')}
               </button>
             ))}

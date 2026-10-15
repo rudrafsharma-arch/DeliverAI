@@ -705,7 +705,7 @@ function processRerunQueue() {
       originalContent = '\n\n## ORIGINAL DOCUMENT CONTENT (for reference)\n' + raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').substring(0,3000);
     }
   }
-  const subPrompt = agentPrompt + '\n\n## PROJECT\nProject: ' + (proj.name||'') + '\nClient: ' + (proj.client||'') + '\n\n## REVIEWER FEEDBACK - ADDRESS ALL POINTS\n' + reviewComments + originalContent + '\n\n' + (isArchitect ? 'Regenerate ONLY the HTML Solution Architecture document. Make the requested changes naturally within the document - do NOT add callout boxes, meta-commentary, or notes explaining what was changed. Just make the changes as if writing the document fresh. Do NOT include AGENT_PLAN_START or RUNTIME_AGENT blocks. Output only the complete HTML document.' : 'Regenerate the complete document making all requested changes naturally within the content. Do NOT add callout boxes or notes saying what was changed - just make the changes inline as a professional consultant would. The document should read as if written fresh, not as a revision.');
+  const subPrompt = agentPrompt + '\n\n## PROJECT\nProject: ' + (proj.name||'') + '\nClient: ' + (proj.client||'') + '\n\n## REVIEWER FEEDBACK - ADDRESS ALL POINTS\n' + reviewComments + originalContent + '\n\n' + (isArchitect ? 'IMPORTANT: You must output ONLY a complete HTML document. Do NOT output AGENT_PLAN_START, RUNTIME_AGENT, or any JSON blocks. Do NOT output placeholder text like xxx. The original document content is provided above - use it as the base and make ONLY the requested changes. Output the COMPLETE improved HTML document starting with <!DOCTYPE html> and ending with </html>. Minimum 10KB of content.' : 'Regenerate the complete document making all requested changes naturally within the content. Do NOT add callout boxes or notes saying what was changed - just make the changes inline as a professional consultant would. The document should read as if written fresh, not as a revision.');
   const gitBash = process.env.GIT_BASH_PATH;
   const claudePath = process.env.CLAUDE_PATH;
   if (!gitBash || !claudePath) { completedReruns[jobId] = { done: true, error: 'Claude not configured' }; rerunRunning = false; processRerunQueue(); return; }
@@ -727,7 +727,7 @@ function processRerunQueue() {
       completedReruns[jobId] = { done: true, fileName: saved, agentName };
       console.log('[Queue] Done:', agentName, '->', saved);
     } else {
-      completedReruns[jobId] = { done: true, error: 'Failed code:' + code };
+      completedReruns[jobId] = { done: true, error: 'Generation failed - Claude output was invalid (too short, wrong format, or placeholder content). Please try again.' };
     }
     rerunRunning = false;
     processRerunQueue();
