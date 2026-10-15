@@ -1,4 +1,4 @@
-// DeliverAI Global Job Manager
+﻿// DeliverAI Global Job Manager
 const STORAGE_KEY = 'deliverAI_jobs';
 const listeners = {};
 
@@ -25,7 +25,8 @@ export function startJob(agentId, agentName, projectId, formData) {
   saveJobs(jobs);
   notifyListeners();
   const params = new URLSearchParams({ agentId, projectId: projectId || '', ...formData });
-  const es = new EventSource('http://localhost:3002/generate-stream?' + params);
+  const streamUrl = agentId === 'btp-admin-agent' ? 'http://localhost:3002/btp-admin-run?' + new URLSearchParams({ projectId: projectId || '', task: formData.task || '', customTask: formData.customTask || '', region: formData.region || '', environment: formData.environment || '' }) : 'http://localhost:3002/generate-stream?' + params;
+  const es = new EventSource(streamUrl);
   es.onmessage = (e) => {
     const { type, data } = JSON.parse(e.data);
     if (type === 'status' || type === 'progress') jobs[jobId].logs.push({ time: new Date().toISOString(), msg: data });
