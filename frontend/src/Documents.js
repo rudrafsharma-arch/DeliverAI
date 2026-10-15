@@ -13,6 +13,7 @@ export default function Documents({ projects }) {
   const [regenerating, setRegenerating] = useState(null);
   const [approvalModal, setApprovalModal] = useState(null);
   const [bulkApproving, setBulkApproving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [reviewerName, setReviewerName] = useState('');
   const [reviewComment, setReviewComment] = useState('');
@@ -169,29 +170,26 @@ export default function Documents({ projects }) {
     }
   };
 
-  const deleteFolder = async (workstream, procName) => {
-    if (!window.confirm('Delete all documents in ' + workstream + (procName ? ' / ' + procName : '') + '? This cannot be undone.')) return;
-    const proj = selectedProject;
-    const docsToDelete = (proj.documents || []).filter(d => {
-      const fp = (d.filePath || d.fileName);
-      if (!fp) return false;
-      const clean = fp.startsWith(proj.id + '/') ? fp.slice(proj.id.length + 1) : fp;
-      const parts = clean.split('/');
-      const KNOWN_WS2=['OTC','P2P','MFG','RTR','HCM','SCM','FI','MM','SD','HR','EWM','TM','General','Other'];
-      const wsIdx2=parts.findIndex(p=>KNOWN_WS2.some(w=>w.toLowerCase()===p.toLowerCase()));
-      const si2=wsIdx2>=0?wsIdx2:0;
-      const docWs=parts[si2]||''
-      const docProc = parts[1] || '';
-      if (procName) return docWs === workstream && docProc === procName;
-      return docWs === workstream;
+  const deleteFolder = async (folderPath) => {
+    if (!window.confirm("Delete all documents in " + folderPath + "? This cannot be undone.")) return;
+    const projs = await fetch("/api/projects").then(r=>r.json());
+    const proj = Array.isArray(projs) ? projs.find(p=>p.id===selectedProject.id) : selectedProject;
+    if (!proj) return;
+    const prefix = folderPath + "/";
+    const docsToDelete = (proj.documents||[]).filter(d => {
+      const fp = d.filePath || d.fileName || "";
+      const clean = fp.startsWith(proj.id + "/") ? fp.slice(proj.id.length + 1) : fp;
+      return clean.startsWith(prefix);
     });
+    console.log("[DELETE] folder:", folderPath, "docs:", docsToDelete.length, docsToDelete.map(d=>d.filePath));
+    if (docsToDelete.length === 0) { toast("No documents found in " + folderPath, "warning"); return; }
     for (const doc of docsToDelete) {
-      const fp = encodeURIComponent(doc.filePath || doc.fileName);
-      try { await fetch('/api/documents/' + proj.id + '/' + fp, { method: 'DELETE' }); } catch(e) {}
+      const fp = (doc.filePath || doc.fileName || "").split("/").map(encodeURIComponent).join("/");
+      try { await fetch("/api/documents/" + proj.id + "/" + fp, { method: "DELETE" }); } catch(e) {}
     }
-    const updated = await fetch('/api/projects').then(r => r.json());
-    const p = updated.find(p => p.id === proj.id);
-    if (p) { setSelectedProject(p); buildFolderTree(p); }
+    const upd = await fetch("/api/projects").then(r=>r.json());
+    const p = Array.isArray(upd) ? upd.find(p=>p.id===selectedProject.id) : null;
+    if (p) { setSelectedProject(p); buildFolderTree(p); toast("Folder deleted", "success"); }
   };
 
   const folderLabel = (key) => {
@@ -249,7 +247,7 @@ export default function Documents({ projects }) {
           <>
             <div style={{ marginBottom:16 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}><div style={{ fontSize:16, fontWeight:700, color:'#1e293b' }}>{selectedProject.name}</div>
-                <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder='🔍 Search documents...' style={{ padding:'4px 10px', borderRadius:6, border:'1px solid #e2e8f0', fontSize:12, width:200 }} /><button onClick={() => fetch('/api/projects').then(r=>r.json()).then(data=>{const p=data.find(x=>x.id===selectedProject.id);if(p){setSelectedProject(p);buildFolderTree(p);}})} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:11, color:'#64748b' }}>↺ Refresh</button></div>
+                <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder='🔍 Search documents...' style={{ padding:'4px 10px', borderRadius:6, border:'1px solid #e2e8f0', fontSize:12, width:200 }} /><button onClick={() => fetch('/api/projects').then(r=>r.json()).then(data=>{const p=data.find(x=>x.id===selectedProject.id);if(p){setSelectedProject(p);buildFolderTree(p);}})} style={{ padding:'3px 8px', borderRadius:5, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:11, color:'#64748b' }}>{refreshing ? '↻ Refreshing...' : '↺ Refresh'}</button></div>
               <div style={{ fontSize:12, color:'#64748b' }}>{selectedProject.client}{' · '}{(selectedProject.documents||[]).length} documents</div>
             </div>
             {Object.keys(folderTree).length === 0 && <div style={{ color:'#94a3b8', fontSize:13, textAlign:'center', marginTop:40 }}>No documents yet.</div>}
@@ -285,7 +283,7 @@ export default function Documents({ projects }) {
                           <span>📂 {process}</span>
                           <span style={{ fontSize:10, color:'#94a3b8', fontWeight:400 }}>({docs.length} files)</span>
                           <button onClick={(e) => { e.stopPropagation(); bulkApproveFolder(workstream, process); }} disabled={bulkApproving} style={{ marginLeft:4, padding:'3px 8px', borderRadius:5, border:'1px solid #16a34a', background:'#fff', color:'#16a34a', cursor:'pointer', fontSize:11 }}>✓ Approve All</button>
-                          <button onClick={(e) => { e.stopPropagation(); deleteFolder(workstream, process); }} style={{ marginLeft:'auto', padding:'2px 8px', borderRadius:4, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:10 }}>Delete Folder</button>
+                          <button onClick={(e) => { e.stopPropagation(); deleteFolder(workstream + "/" + process); }} style={{ marginLeft:'auto', padding:'2px 8px', borderRadius:4, border:'1px solid #ef4444', background:'#fff', color:'#ef4444', cursor:'pointer', fontSize:10 }}>Delete Folder</button>
                         </div>
                         {expandedFolders[procKey] && docs.map((doc, i) => (
                           <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', borderRadius:6, marginBottom:3, marginLeft:16, marginTop:3, background:'#fff', border:'1px solid #e2e8f0' }}>

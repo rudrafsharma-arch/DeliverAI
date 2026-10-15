@@ -253,6 +253,16 @@ app.post('/api/save-document', async (req, res) => {
     const d = await r.json(); res.json(d);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
+// Proxy delete document
+app.delete('/api/documents/:projectId/*', async (req, res) => {
+  try {
+    const filePath = req.params[0];
+    const r = await fetch(MCP + '/documents/' + req.params.projectId + '/' + filePath, { method: 'DELETE' });
+    const d = await r.json();
+    res.json(d);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 // Proxy download
 app.get('/api/download/:projectId/*', async (req, res) => {
   try {
