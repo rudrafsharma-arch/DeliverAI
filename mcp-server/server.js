@@ -713,7 +713,16 @@ app.post('/save-document', (req, res) => {
   fs.writeFileSync(fullPath, html, 'utf8');
   console.log('[Save] Overwrote:', fullPath);
   res.json({ success: true });
-})
+});
+async function processRerunQueue() {
+  if (rerunRunning || rerunQueue.length === 0) return;
+  rerunRunning = true;
+  const { projectId, agentId, agentName, filePath, reviewComments, jobId } = rerunQueue.shift();
+  const proj = loadProject(projectId);
+  const agentDir = path.join(__dirname, "../agents/" + agentId);
+  const agentPrompt = fs.existsSync(path.join(agentDir, "prompt.md")) ? fs.readFileSync(path.join(agentDir, "prompt.md"), "utf8") : "";
+  const originalContent = filePath && fs.existsSync(path.join(getProjectDir(projectId), path.basename(filePath))) ? fs.readFileSync(path.join(getProjectDir(projectId), path.basename(filePath)), "utf8") : "";
+  const isArchitect = agentId === "architect";
   const subPrompt = agentPrompt + '\n\n## PROJECT\nProject: ' + (proj.name||'') + '\nClient: ' + (proj.client||'') + '\n\n## REVIEWER FEEDBACK - ADDRESS ALL POINTS\n' + reviewComments + originalContent + '\n\n' + (isArchitect ? 'IMPORTANT: You must output ONLY a complete HTML document. Do NOT output AGENT_PLAN_START, RUNTIME_AGENT, or any JSON blocks. Do NOT output placeholder text like xxx. The original document content is provided above - use it as the base and make ONLY the requested changes. Output the COMPLETE improved HTML document starting with <!DOCTYPE html> and ending with </html>. Minimum 10KB of content.' : 'Regenerate the complete document making all requested changes naturally within the content. Do NOT add callout boxes or notes saying what was changed - just make the changes inline as a professional consultant would. The document should read as if written fresh, not as a revision.');
   const gitBash = process.env.GIT_BASH_PATH;
   const claudePath = process.env.CLAUDE_PATH;
@@ -740,6 +749,7 @@ app.post('/save-document', (req, res) => {
     rerunRunning = false;
     processRerunQueue();
   });
+}
 
 app.post('/rerun-agent', (req, res) => {
   const { projectId, agentId, agentName, filePath, reviewComments } = req.body;
