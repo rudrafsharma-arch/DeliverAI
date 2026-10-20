@@ -541,7 +541,7 @@ app.post('/btp-mcp-call', async (req, res) => {
 const SUPPORTED_ENGINES = [
   { id: 'claude-code-cli', name: 'Claude Code CLI (Accenture)', requiresKey: false, models: [] },
   { id: 'anthropic', name: 'Anthropic API', requiresKey: true, models: ['claude-opus-4-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'] },
-  { id: 'gemini', name: 'Google Gemini', requiresKey: true, models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'] },
+  { id: 'gemini', name: 'Google Gemini', requiresKey: true, models: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'] },
   { id: 'azure-openai', name: 'Azure OpenAI', requiresKey: true, models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'] },
   { id: 'sap-ai-core', name: 'SAP AI Core', requiresKey: true, models: ['gpt-4o', 'claude-3-sonnet', 'gemini-1.0-pro'] }
 ];
@@ -555,7 +555,7 @@ app.get('/api/ai-engine', (req, res) => {
     anthropicKey: getVal('ANTHROPIC_API_KEY') ? '***set***' : '',
     anthropicModel: getVal('ANTHROPIC_MODEL') || 'claude-sonnet-4-6',
     geminiKey: getVal('GEMINI_API_KEY') ? '***set***' : '',
-    geminiModel: getVal('GEMINI_MODEL') || 'gemini-2.0-flash',
+    geminiModel: getVal('GEMINI_MODEL') || 'gemini-1.5-flash',
     azureKey: getVal('AZURE_OPENAI_KEY') ? '***set***' : '',
     azureEndpoint: getVal('AZURE_OPENAI_ENDPOINT') || '',
     azureDeployment: getVal('AZURE_OPENAI_DEPLOYMENT') || 'gpt-4o',
@@ -604,7 +604,7 @@ app.post('/api/ai-engine/test', async (req, res) => {
       const d = await r.json();
       res.json({ success: r.ok, message: r.ok ? 'Anthropic API connected' : d.error?.message });
     } else if (engine === 'gemini') {
-      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (model || 'gemini-2.0-flash') + ':generateContent?key=' + key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] }) });
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (model || 'gemini-1.5-flash') + ':generateContent?key=' + key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] }) });
       const d = await r.json();
       res.json({ success: r.ok, message: r.ok ? 'Gemini API connected' : d.error?.message });
     } else if (engine === 'azure-openai') {
@@ -623,4 +623,5 @@ app.listen(PORT, () => {
   console.log('║  MCP Server:  ' + MCP + '   ║');
   console.log('╚══════════════════════════════════════════════╝\n');
 });
+
 

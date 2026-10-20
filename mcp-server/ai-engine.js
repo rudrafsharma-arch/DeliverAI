@@ -1,4 +1,4 @@
-const fetch = (...args) => import('node-fetch').then(({default: f}) => f(...args)).catch(() => global.fetch(...args));
+﻿const fetch = (...args) => import('node-fetch').then(({default: f}) => f(...args)).catch(() => global.fetch(...args));
 
 async function callAI(prompt, systemPrompt, options = {}) {
   const engine = process.env.AI_ENGINE || 'claude-code-cli';
@@ -37,7 +37,7 @@ async function callAnthropic(prompt, systemPrompt, options) {
 }
 
 async function callGemini(prompt, systemPrompt, options) {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
   const key = process.env.GEMINI_API_KEY;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
   const contents = [];
@@ -123,3 +123,4 @@ function getActiveEngine() {
 }
 
 module.exports = { callAI, getActiveEngine };
+
