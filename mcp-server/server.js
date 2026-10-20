@@ -879,6 +879,8 @@ After completing the task, output a complete HTML report (starting with <!DOCTYP
     if (!gitBash || !claudePath) { send('error', { message: 'Claude CLI not configured in .env' }); res.end(); return; }
 
     send('status', { message: 'Running Claude Code CLI with BTP MCP...' });
+    // Refresh token in Claude Code CLI settings
+    try { const cs=JSON.parse(fs.readFileSync(path.join(process.env.USERPROFILE,'.claude/settings.local.json'),'utf8')); if(!cs.mcpServers)cs.mcpServers={}; cs.mcpServers['BTP Administration']={type:'streamableHttp',url:'https://sso.mcp.btp.cloud.sap/mcp',headers:{Authorization:'Bearer '+token}}; fs.writeFileSync(path.join(process.env.USERPROFILE,'.claude/settings.local.json'),JSON.stringify(cs,null,2)); send('status',{message:'Fresh token injected into Claude Code CLI'}); } catch(e){}
 
     const { spawn } = require('child_process');
     const promptFile = path.join(__dirname, '../.btp-prompt.txt');
@@ -886,7 +888,7 @@ After completing the task, output a complete HTML report (starting with <!DOCTYP
 
     const mcpCfgPath = mcpConfigFile.split('\\\\').join('/');
     const promptPath = promptFile.split('\\\\').join('/');
-    const proc = spawn('powershell.exe', ['-Command', 'Get-Content ' + promptFile + ' | claude --print --dangerously-skip-permissions --mcp-config ' + mcpConfigFile + ' --strict-mcp-config'], { env: { ...process.env } });
+    const proc = spawn('powershell.exe', ['-Command', 'Get-Content ' + promptFile + ' | claude --print --dangerously-skip-permissions'], { env: { ...process.env } });
 
     let output = '';
 
@@ -933,3 +935,4 @@ app.listen(MCP_PORT, () => {
   console.log('DeliverAI MCP Server running on port ' + MCP_PORT);
   console.log('Agents loaded: ' + Object.keys(AGENTS).length);
 });
+
