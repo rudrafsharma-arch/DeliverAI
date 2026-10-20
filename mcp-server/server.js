@@ -828,109 +828,100 @@ app.get('/btp-admin-run', async (req, res) => {
   res.flushHeaders();
   const send = (type, data) => res.write('data: ' + JSON.stringify({ type, ...data }) + '\n\n');
 
-  const MCP_URL = 'https://sso.mcp.btp.cloud.sap/mcp';
-  const GLOBAL_ACCOUNT = '8cede957trial-ga';
-  const SUBACCOUNT_ID = '4e2eaf4b-4463-4be9-9926-7cf17e8adaba';
-
-  async function callBTPTool(toolName, args, token) {
-    const r = await fetch(MCP_URL, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method: 'tools/call', params: { name: toolName, arguments: args } })
-    });
-    const text = await r.text();
-    for (const line of text.split('\n')) {
-      if (line.startsWith('data: ')) {
-        try { return JSON.parse(line.replace('data: ', '')); } catch(e) {}
-      }
-    }
-    return null;
-  }
-
   try {
-    const { task } = req.query;
+    const { task, projectId } = req.query;
+    const instruction = task || 'Full Platform Assessment of my BTP trial account';
 
-    // Get SAP BTP Admin MCP token
-    const connPath = path.join(__dirname, '../connections.json');
-    if (!fs.existsSync(connPath)) { send('error', { message: 'No connections.json. Please connect SAP BTP Admin MCP first.' }); res.end(); return; }
-    const conns = JSON.parse(fs.readFileSync(connPath, 'utf8'));
-    const mcpConn = conns.connections.find(c => c.id === 'sap-btp-admin-mcp');
-    if (!mcpConn || !mcpConn.bearerToken) { send('error', { message: 'SAP BTP Admin MCP not connected. Run setup script first.' }); res.end(); return; }
-    const token = mcpConn.bearerToken;
+    // Get token
+    const tokenFile = path.join(__dirname, '../btp_tokens.json');
+    if (!fs.existsSync(tokenFile)) { send('error', { message: 'Run BTP auth setup first' }); res.end(); return; }
+    const stored = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+    const token = stored.auth?.access_token;
+    if (!token) { send('error', { message: 'No BTP token found' }); res.end(); return; }
 
     send('status', { message: 'Connected to SAP BTP Admin MCP' });
 
-    // Step 1: Check current subscriptions
-    send('action', { step: 'Check Subscriptions', description: 'Checking what is subscribed in your trial' });
-    const subs = await callBTPTool('Subscription-list', { global_account: GLOBAL_ACCOUNT, subaccount_id: SUBACCOUNT_ID }, token);
-    const subsText = subs?.result?.content?.[0]?.text || JSON.stringify(subs);
-    send('action_result', { step: 'Check Subscriptions', success: true, summary: subsText.substring(0, 300) });
+    // Write temp MCP config for Claude Code
+    const mcpConfig = {
+      mcpServers: {
+        "BTP Administration": {
+          type: "streamableHttp",
+          url: "https://sso.mcp.btp.cloud.sap/mcp",
+          headers: { Authorization: "Bearer " + token }
+        }
+      }
+    };
+    const mcpConfigFile = path.join(__dirname, '../.btp-mcp-config.json');
+    fs.writeFileSync(mcpConfigFile, JSON.stringify(mcpConfig, null, 2));
+    send('status', { message: 'BTP MCP config prepared' });
 
-    // Check if Integration Suite is subscribed
-    const isSubscribed = subsText.includes('integrationsuite-trial') && subsText.includes('SUBSCRIBED') || subsText.includes('integrationsuite'') && subsText.includes('SUBSCRIBED');
-    send('status', { message: 'Integration Suite subscribed: ' + (isSubscribed ? 'YES' : 'NO') });
+    // Build prompt for Claude Code
+    const fullPrompt = `You are a SAP BTP Administrator. You have access to the SAP BTP Administration MCP server via the "BTP Administration" MCP connection.
 
-    if (!isSubscribed) {
-      // Step 2: Assign entitlement
-      send('action', { step: 'Assign Entitlement', description: 'Assigning Integration Suite entitlement to subaccount' });
-      const assign = await callBTPTool('SubaccountEntitlement-assign', {
-        global_account: GLOBAL_ACCOUNT,
-        service_name: 'integrationsuite',
-        service_plan_name: 'trial',
-        subaccount_id: SUBACCOUNT_ID,
-        quota: 1
-      }, token);
-      const assignText = assign?.result?.content?.[0]?.text || JSON.stringify(assign);
-      send('action_result', { step: 'Assign Entitlement', success: !assignText.includes('error'), summary: assignText.substring(0, 200) });
+Context:
+- Global Account subdomain: 8cede957trial-ga
+- Subaccount ID: 4e2eaf4b-4463-4be9-9926-7cf17e8adaba
+- User email: vikram.f.sharma@gmail.com
+- Region: AP21 Singapore Azure
 
-      // Step 3: Subscribe Integration Suite
-      send('action', { step: 'Subscribe Integration Suite', description: 'Subscribing to Integration Suite trial' });
-      const sub = await callBTPTool('Subaccount-subscribe', {
-        global_account: GLOBAL_ACCOUNT,
-        subaccount_id: SUBACCOUNT_ID,
-        app_name: 'integrationsuite',
-        plan_name: 'trial'
-      }, token);
-      const subText = sub?.result?.content?.[0]?.text || JSON.stringify(sub);
-      send('action_result', { step: 'Subscribe Integration Suite', success: !subText.includes('error'), summary: subText.substring(0, 300) });
-    }
+User instruction: ${instruction}
 
-    // Step 4: Check service instances
-    send('action', { step: 'Check Service Instances', description: 'Checking Process Integration Runtime instances' });
-    const si = await callBTPTool('ServiceInstance-list', { global_account: GLOBAL_ACCOUNT, subaccount_id: SUBACCOUNT_ID }, token);
-    const siText = si?.result?.content?.[0]?.text || JSON.stringify(si);
-    send('action_result', { step: 'Check Service Instances', success: true, summary: siText.substring(0, 300) });
+Please use the BTP Administration MCP tools to complete this task. Execute the necessary tool calls, show the results, and provide a summary of what was done and what the outcome was.
 
-    // Generate HTML report
-    const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>BTP Admin Report</title>
-<style>body{font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:20px}h1{color:#0070F2}h2{color:#333;border-bottom:2px solid #0070F2;padding-bottom:8px}.ok{color:#16a34a;font-weight:bold}.fail{color:#dc2626;font-weight:bold}.card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:12px 0}.badge{background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:bold}</style>
-</head><body>
-<div style="display:flex;justify-content:space-between;align-items:center">
-<h1>SAP BTP Admin Report</h1><span class="badge">DRAFT</span>
-</div>
-<p><strong>Global Account:</strong> ${GLOBAL_ACCOUNT} | <strong>Subaccount:</strong> ${SUBACCOUNT_ID}</p>
+After completing the task, output a complete HTML report (starting with <!DOCTYPE html>) summarizing:
+1. What actions were taken
+2. Results of each action (success/failure)
+3. Current state after the actions
+4. Any next steps needed`;
+
+    const gitBash = process.env.GIT_BASH_PATH;
+    const claudePath = process.env.CLAUDE_PATH;
+    if (!gitBash || !claudePath) { send('error', { message: 'Claude CLI not configured in .env' }); res.end(); return; }
+
+    send('status', { message: 'Running Claude Code CLI with BTP MCP...' });
+
+    const { spawn } = require('child_process');
+    const proc = spawn(gitBash, [
+      '--login', '-c',
+      claudePath + ' --print --dangerously-skip-permissions --mcp-config ' + mcpConfigFile.split('\\\\').join('/') + ' --strict-mcp-config'
+    ], { env: { ...process.env, HOME: process.env.HOME || process.env.USERPROFILE } });
+
+    let output = '';
+    proc.stdin.write(fullPrompt);
+    proc.stdin.end();
+
+    proc.stdout.on('data', d => {
+      output += d.toString();
+      send('progress', { text: d.toString().substring(0, 100) });
+    });
+    proc.stderr.on('data', d => send('log', { text: d.toString().substring(0, 100) }));
+
+    proc.on('close', () => {
+      // Clean up temp config
+      try { fs.unlinkSync(mcpConfigFile); } catch(e) {}
+
+      const html = output.includes('<!DOCTYPE') 
+        ? output.substring(output.indexOf('<!DOCTYPE'))
+        : `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BTP Admin Report</title>
+<style>body{font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:20px}h1{color:#0070F2}pre{background:#f8fafc;padding:16px;border-radius:8px;white-space:pre-wrap}</style>
+</head><body><h1>BTP Admin Report</h1><p><strong>Instruction:</strong> ${instruction}</p>
 <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-<h2>Integration Suite Status</h2>
-<div class="card">
-<p class="${isSubscribed ? 'ok' : 'fail'}">${isSubscribed ? '✅ Integration Suite is SUBSCRIBED' : '⚙️ Integration Suite subscription initiated'}</p>
-<pre style="font-size:11px;overflow-x:auto">${subsText.substring(0, 500)}</pre>
-</div>
-<h2>Service Instances</h2>
-<div class="card"><pre style="font-size:11px;overflow-x:auto">${siText.substring(0, 500)}</pre></div>
-</body></html>`;
+<pre>${output || 'No output received from Claude CLI'}</pre></body></html>`;
 
-    if (req.query.projectId) {
-      try {
-        const { saveDocumentToProject } = require('./doc-saver');
-        const proj = loadProject(req.query.projectId);
-        if (proj) saveDocumentToProject(req.query.projectId, 'btp-admin-agent', 'SAP BTP Admin Agent', html, { ...proj, workstream: 'Platform', processName: 'BTP-Setup' });
-        send('status', { message: 'Report saved to project' });
-      } catch(e) {}
-    }
+      if (projectId) {
+        try {
+          const { saveDocumentToProject } = require('./doc-saver');
+          const proj = loadProject(projectId);
+          if (proj) saveDocumentToProject(projectId, 'btp-admin-agent', 'SAP BTP Admin Agent', html, { ...proj, workstream: 'Platform', processName: 'BTP-Setup' });
+          send('status', { message: 'Report saved to project' });
+        } catch(e) {}
+      }
 
-    send('complete', { html, actionsExecuted: 4, succeeded: 4 });
-    res.end();
+      send('complete', { html, actionsExecuted: 1, succeeded: 1 });
+      res.end();
+    });
+
+    proc.on('error', e => { send('error', { message: e.message }); res.end(); });
 
   } catch(e) {
     send('error', { message: e.message });
