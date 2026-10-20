@@ -885,8 +885,11 @@ app.get('/btp-admin-run', async (req, res) => {
     // Ask AI which tools to call
     const systemPrompt = `You are a SAP BTP Administrator. You must respond with ONLY a valid JSON array of tool calls.
 
-Available BTP Admin tools: ${tools.map(t => t.name + ': ' + (t.description || '')).join('\n')}
+Available BTP Admin tools (use EXACT names): ${tools.map(t => t.name).join(', ')}
 
+Tool details: ${tools.map(t => t.name + ': ' + (t.description || '')).join(', ')}
+
+Context:
 Context:
 - global_account: "${GLOBAL_ACCOUNT}"
 - subaccount_id: "${SUBACCOUNT_ID}"  
@@ -898,9 +901,9 @@ Rules:
 - Always include global_account and subaccount_id in args where needed
 - Maximum 5 tool calls
 - For read operations use list/get tools
+- CRITICAL: Use tool names EXACTLY as listed above. Do NOT invent tool names. Only use tools from the list.
+- For read operations use list/get tools
 - For write operations use create/assign tools`;
-
-    send('status', { message: 'Analyzing instruction...' });
     const aiResponse = await callAI(instruction, systemPrompt, { maxTokens: 1000 });
     send('log', { text: 'AI response: ' + aiResponse.substring(0, 100) });
 
