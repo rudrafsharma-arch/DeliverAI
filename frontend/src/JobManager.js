@@ -28,12 +28,12 @@ export function startJob(agentId, agentName, projectId, formData) {
   const streamUrl = agentId === 'btp-admin-agent' ? 'http://localhost:3002/btp-admin-run?' + new URLSearchParams({ projectId: projectId || '', task: formData.task || '', customTask: formData.customTask || '', region: formData.region || '', environment: formData.environment || '' }) : 'http://localhost:3002/generate-stream?' + params;
   const es = new EventSource(streamUrl);
   es.onmessage = (e) => {
-    const { type, data } = JSON.parse(e.data);
-    if (type === 'status' || type === 'progress') jobs[jobId].logs.push({ time: new Date().toISOString(), msg: data });
-    else if (type === 'complete') { es.close(); jobs[jobId].status = 'completed'; jobs[jobId].result = data; jobs[jobId].completedAt = new Date().toISOString(); jobs[jobId].logs.push({ time: new Date().toISOString(), msg: 'Completed' }); }
-    else if (type === 'error') { es.close(); jobs[jobId].status = 'failed'; jobs[jobId].error = data; jobs[jobId].completedAt = new Date().toISOString(); }
-    saveJobs(jobs); notifyListeners();
-  };
+    const msg = JSON.parse(e.data); const { type } = msg; const text = msg.data || msg.message || msg.text || msg.summary || msg.step || '';
+    if (type === 'status' || type === 'progress' || type === 'log') jobs[jobId].logs.push({ time: new Date().toISOString(), msg: text });
+    else if (type === 'action') jobs[jobId].logs.push({ time: new Date().toISOString(), msg: 'Executing: ' + (msg.step||'') + ' - ' + (msg.description||'') });
+    else if (type === 'action_result') jobs[jobId].logs.push({ time: new Date().toISOString(), msg: (msg.success ? 'OK' : 'FAIL') + ': ' + (msg.step||'') });
+    else if (type === 'complete') { es.close(); jobs[jobId].status = 'completed'; jobs[jobId].result = msg.html || msg.data || ''; jobs[jobId].completedAt = new Date().toISOString(); jobs[jobId].logs.push({ time: new Date().toISOString(), msg: 'Completed' }); }
+    else if (type === 'error') { es.close(); jobs[jobId].status = 'failed'; jobs[jobId].error = msg.message || msg.data || ''; jobs[jobId].completedAt = new Date().toISOString(); }
   es.onerror = () => { es.close(); if (jobs[jobId].status === 'running') { jobs[jobId].status = 'failed'; jobs[jobId].error = 'Connection lost'; jobs[jobId].completedAt = new Date().toISOString(); saveJobs(jobs); notifyListeners(); } };
   jobs[jobId].cancel = () => { es.close(); jobs[jobId].status = 'cancelled'; jobs[jobId].completedAt = new Date().toISOString(); saveJobs(jobs); notifyListeners(); };
   notifyListeners();
