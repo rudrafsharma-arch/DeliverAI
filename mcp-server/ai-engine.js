@@ -48,7 +48,7 @@ async function callGemini(prompt, systemPrompt, options) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: options.maxTokens || 8000 } })
   });
-  if (!r.ok) throw new Error('Gemini API error: ' + r.status + ' ' + await r.text());
+  if (!r.ok) { const errText = await r.text(); if (r.status === 503) { await new Promise(res => setTimeout(res, 3000)); return callGemini(prompt, systemPrompt, options); } throw new Error('Gemini API error: ' + r.status + ' ' + errText); }
   const d = await r.json();
   return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
@@ -123,6 +123,7 @@ function getActiveEngine() {
 }
 
 module.exports = { callAI, getActiveEngine };
+
 
 
 
