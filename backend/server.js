@@ -614,7 +614,7 @@ app.post('/api/ai-engine/test', async (req, res) => {
       const r = await fetch(endpoint + '/openai/deployments/' + (model || 'gpt-4o') + '/chat/completions?api-version=2024-02-01', { method: 'POST', headers: { 'Content-Type': 'application/json', 'api-key': key }, body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }], max_tokens: 10 }) });
       res.json({ success: r.ok, message: r.ok ? 'Azure OpenAI connected' : 'Connection failed' });
     } else if (engine === 'groq') {
-      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify({ model: model || 'llama-3.1-8b-instant', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] }) });
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify({ model: 'qwen/qwen3.8-27b', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] }) });
       const d = await r.json();
       res.json({ success: r.ok, message: r.ok ? 'Groq API connected' : (d.error?.message || 'Failed') });
     } else {
@@ -630,6 +630,7 @@ app.listen(PORT, () => {
   console.log('║  MCP Server:  ' + MCP + '   ║');
   console.log('╚══════════════════════════════════════════════╝\n');
 });
+
 
 
 
