@@ -561,6 +561,7 @@ app.get('/api/ai-engine', (req, res) => {
     azureEndpoint: getVal('AZURE_OPENAI_ENDPOINT') || '',
     azureDeployment: getVal('AZURE_OPENAI_DEPLOYMENT') || 'gpt-4o',
     sapAiKey: getVal('SAP_AI_CORE_KEY') ? '***set***' : '',
+    groqKey: getVal('GROQ_API_KEY') ? '***set***' : '',
     sapAiEndpoint: getVal('SAP_AI_CORE_ENDPOINT') || '',
     sapAiDeployment: getVal('SAP_AI_CORE_DEPLOYMENT') || '',
     engines: SUPPORTED_ENGINES
@@ -568,7 +569,7 @@ app.get('/api/ai-engine', (req, res) => {
 });
 
 app.post('/api/ai-engine', (req, res) => {
-  const { engine, anthropicKey, anthropicModel, geminiKey, geminiModel, azureKey, azureEndpoint, azureDeployment, sapAiKey, sapAiEndpoint, sapAiDeployment } = req.body;
+  const { engine, anthropicKey, anthropicModel, geminiKey, geminiModel, azureKey, azureEndpoint, azureDeployment, sapAiKey, sapAiEndpoint, sapAiDeployment, groqKey } = req.body;
   const envPath = require('path').join(__dirname, '../.env');
   let env = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
   const setVal = (key, val) => {
@@ -590,6 +591,7 @@ app.post('/api/ai-engine', (req, res) => {
   if (sapAiKey && sapAiKey !== '***set***') setVal('SAP_AI_CORE_KEY', sapAiKey);
   if (sapAiEndpoint) setVal('SAP_AI_CORE_ENDPOINT', sapAiEndpoint);
   if (sapAiDeployment) setVal('SAP_AI_CORE_DEPLOYMENT', sapAiDeployment);
+  if (groqKey && groqKey !== '***set***') setVal('GROQ_API_KEY', groqKey);
   fs.writeFileSync(envPath, env);
   require('dotenv').config({ path: envPath, override: true });
   res.json({ success: true, engine });
@@ -628,6 +630,7 @@ app.listen(PORT, () => {
   console.log('║  MCP Server:  ' + MCP + '   ║');
   console.log('╚══════════════════════════════════════════════╝\n');
 });
+
 
 
 

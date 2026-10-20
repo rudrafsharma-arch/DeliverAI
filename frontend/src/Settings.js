@@ -57,6 +57,7 @@ function ActiveConnectionPicker() {
   const [azureEndpoint, setAzureEndpoint] = React.useState('');
   const [azureDeployment, setAzureDeployment] = React.useState('gpt-4o');
   const [aiEngineStatus, setAiEngineStatus] = React.useState('');
+  const [groqKey, setGroqKey] = React.useState('');
 const [connections, setConnections] = React.useState([]);
   const [activeId, setActiveId] = React.useState(null);
   const [saving, setSaving] = React.useState(false);
@@ -81,12 +82,13 @@ const [connections, setConnections] = React.useState([]);
       if (d.anthropicKey === '***set***') setAnthropicKey('***set***');
       if (d.geminiKey === '***set***') setGeminiKey('***set***');
       if (d.azureKey === '***set***') setAzureKey('***set***');
+      if (d.groqKey === '***set***') setGroqKey('***set***');
     }).catch(() => {});
   }, []);
 
   const saveAiEngine = async () => {
     try {
-      const r = await fetch('http://localhost:3005/api/ai-engine', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ engine: aiEngine, anthropicKey, anthropicModel, geminiKey, geminiModel, azureKey, azureEndpoint, azureDeployment }) });
+      const r = await fetch('http://localhost:3005/api/ai-engine', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ engine: aiEngine, anthropicKey, anthropicModel, geminiKey, geminiModel, azureKey, azureEndpoint, azureDeployment, groqKey }) });
       const d = await r.json();
       setAiEngineStatus(d.success ? '✅ Saved! Restart MCP server to apply.' : '❌ Save failed');
     } catch(e) { setAiEngineStatus('❌ Error: ' + e.message); }
@@ -95,7 +97,7 @@ const [connections, setConnections] = React.useState([]);
   const testAiEngine = async () => {
     setAiEngineStatus('Testing...');
     try {
-      const key = aiEngine === 'anthropic' ? anthropicKey : aiEngine === 'gemini' ? geminiKey : azureKey;
+      const key = aiEngine === 'anthropic' ? anthropicKey : aiEngine === 'gemini' ? geminiKey : aiEngine === 'groq' ? groqKey : azureKey;
       const r = await fetch('http://localhost:3005/api/ai-engine/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ engine: aiEngine, key, endpoint: azureEndpoint, model: aiEngine === 'anthropic' ? anthropicModel : geminiModel }) });
       const d = await r.json();
       setAiEngineStatus(d.success ? '✅ ' + d.message : '❌ ' + d.message);
@@ -122,7 +124,7 @@ const [connections, setConnections] = React.useState([]);
         </select>
         {aiEngine==='gemini'&&<input type='password' value={geminiKey} onChange={e=>setGeminiKey(e.target.value)} placeholder='Gemini API Key (AIza...)' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
         {aiEngine==='anthropic'&&<input type='password' value={anthropicKey} onChange={e=>setAnthropicKey(e.target.value)} placeholder='Anthropic API Key (sk-ant-...)' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
-        {aiEngine==='groq'&&<input type='password' value={geminiKey} onChange={e=>setGeminiKey(e.target.value)} placeholder='Groq API Key (gsk_...)' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
+        {aiEngine==='groq'&&<input type='password' value={groqKey} onChange={e=>setGroqKey(e.target.value)} placeholder='Groq API Key (gsk_...)' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
         {aiEngine==='azure-openai'&&<input type='password' value={azureKey} onChange={e=>setAzureKey(e.target.value)} placeholder='Azure OpenAI Key' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
         <div style={{display:'flex',gap:8,marginTop:10}}>
           <button onClick={testAiEngine} style={{padding:'6px 14px',borderRadius:7,border:'1px solid #d1d5db',background:'#f8fafc',cursor:'pointer',fontSize:12}}>Test</button>
