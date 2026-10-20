@@ -548,7 +548,7 @@ const SUPPORTED_ENGINES = [
 app.get('/api/ai-engine', (req, res) => {
   const envPath = require('path').join(__dirname, '../.env');
   const env = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
-  const getVal = (key) => { const m = env.match(new RegExp('^' + key + '=(.+) () => {
+  const getVal = (key) => { const line = env.split('\n').find(l => l.startsWith(key + '=')); return line ? line.slice(key.length + 1).trim() : ''; };
   console.log('\n╔══════════════════════════════════════════════╗');
   console.log('║  DeliverAI Backend           :' + PORT + '          ║');
   console.log('║  MCP Server:  ' + MCP + '   ║');
@@ -633,3 +633,4 @@ app.listen(PORT, () => {
   console.log('║  MCP Server:  ' + MCP + '   ║');
   console.log('╚══════════════════════════════════════════════╝\n');
 });
+
