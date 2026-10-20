@@ -32,8 +32,10 @@ export function startJob(agentId, agentName, projectId, formData) {
     if (type === 'status' || type === 'progress' || type === 'log') jobs[jobId].logs.push({ time: new Date().toISOString(), msg: text });
     else if (type === 'action') jobs[jobId].logs.push({ time: new Date().toISOString(), msg: 'Executing: ' + (msg.step||'') + ' - ' + (msg.description||'') });
     else if (type === 'action_result') jobs[jobId].logs.push({ time: new Date().toISOString(), msg: (msg.success ? 'OK' : 'FAIL') + ': ' + (msg.step||'') });
-    else if (type === 'complete') { es.close(); jobs[jobId].status = 'completed'; jobs[jobId].result = msg.html || msg.data || ''; jobs[jobId].completedAt = new Date().toISOString(); jobs[jobId].logs.push({ time: new Date().toISOString(), msg: 'Completed' }); }
+    else if (type === 'complete') { es.close(); jobs[jobId].status = 'completed'; const htmlContent = msg.html || msg.data || ''; jobs[jobId].result = { html: htmlContent, fileName: (agentId + '_result.html'), agentName }; jobs[jobId].completedAt = new Date().toISOString(); jobs[jobId].logs.push({ time: new Date().toISOString(), msg: 'Completed' }); }
     else if (type === 'error') { es.close(); jobs[jobId].status = 'failed'; jobs[jobId].error = msg.message || msg.data || ''; jobs[jobId].completedAt = new Date().toISOString(); }
+    saveJobs(jobs); notifyListeners();
+  };
   es.onerror = () => { es.close(); if (jobs[jobId].status === 'running') { jobs[jobId].status = 'failed'; jobs[jobId].error = 'Connection lost'; jobs[jobId].completedAt = new Date().toISOString(); saveJobs(jobs); notifyListeners(); } };
   jobs[jobId].cancel = () => { es.close(); jobs[jobId].status = 'cancelled'; jobs[jobId].completedAt = new Date().toISOString(); saveJobs(jobs); notifyListeners(); };
   notifyListeners();
