@@ -822,6 +822,59 @@ require("./analyse-route")(app, AGENTS);
 app.post('/cleanup',(req,res)=>{res.json({success:true,removed:[]});});
 
 
+
+async function getValidBTPToken() {
+  const tokenFile = require('path').join(__dirname, '../btp_tokens.json');
+  if (!fs.existsSync(tokenFile)) throw new Error('BTP tokens not found. Run setup script first.');
+  const stored = JSON.parse(fs.readFileSync(tokenFile, 'utf8'));
+  const auth = stored.auth;
+  if (!auth) throw new Error('No auth tokens found.');
+
+  const issuedAt = auth.issued_at || 0;
+  const expiresIn = auth.expires_in || 1800;
+  const expiresAt = issuedAt + (expiresIn * 1000) - (5 * 60 * 1000);
+
+  if (issuedAt > 0 && Date.now() < expiresAt) {
+    return auth.access_token;
+  }
+
+  if (!auth.refresh_token) throw new Error('Token expired. Please re-authenticate via test_mcp.mjs');
+
+  console.log('[BTP] Refreshing access token...');
+  const params = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: auth.refresh_token,
+    client_id: 'e789ba01-5612-47ee-bfe7-79e26411c1ca'
+  });
+
+  const r = await fetch('https://accounts.sap.com/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params
+  });
+
+  if (!r.ok) throw new Error('Token refresh failed: ' + await r.text());
+
+  const newAuth = await r.json();
+  newAuth.issued_at = Date.now();
+  stored.auth = newAuth;
+  fs.writeFileSync(tokenFile, JSON.stringify(stored, null, 2));
+
+  const connPath = require('path').join(__dirname, '../connections.json');
+  if (fs.existsSync(connPath)) {
+    const conns = JSON.parse(fs.readFileSync(connPath, 'utf8'));
+    const idx = conns.connections.findIndex(c => c.id === 'sap-btp-admin-mcp');
+    if (idx !== -1) {
+      conns.connections[idx].bearerToken = newAuth.access_token;
+      if (newAuth.refresh_token) conns.connections[idx].refreshToken = newAuth.refresh_token;
+      fs.writeFileSync(connPath, JSON.stringify(conns, null, 2));
+    }
+  }
+
+  console.log('[BTP] Token refreshed successfully');
+  return newAuth.access_token;
+}
+
 app.get('/btp-admin-run', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
