@@ -52,7 +52,7 @@ function ActiveConnectionPicker() {
   const [anthropicKey, setAnthropicKey] = React.useState('');
   const [anthropicModel, setAnthropicModel] = React.useState('claude-sonnet-4-6');
   const [geminiKey, setGeminiKey] = React.useState('');
-  const [geminiModel, setGeminiModel] = React.useState('gemini-2.5-flash');
+  const [geminiModel, setGeminiModel] = React.useState('gemini-3.8-flash');
   const [azureKey, setAzureKey] = React.useState('');
   const [azureEndpoint, setAzureEndpoint] = React.useState('');
   const [azureDeployment, setAzureDeployment] = React.useState('gpt-4o');
@@ -75,7 +75,7 @@ const [connections, setConnections] = React.useState([]);
       setAiEngine(d.engine || 'claude-code-cli');
       setAiEngines(d.engines || []);
       setAnthropicModel(d.anthropicModel || 'claude-sonnet-4-6');
-      setGeminiModel(d.geminiModel || 'gemini-2.5-flash');
+      setGeminiModel(d.geminiModel || 'gemini-3.8-flash');
       setAzureEndpoint(d.azureEndpoint || '');
       setAzureDeployment(d.azureDeployment || 'gpt-4o');
       if (d.anthropicKey === '***set***') setAnthropicKey('***set***');
@@ -381,5 +381,6 @@ export default function Settings(){
     </div>
   );
 }
+
 
 

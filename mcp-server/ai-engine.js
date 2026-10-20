@@ -37,7 +37,7 @@ async function callAnthropic(prompt, systemPrompt, options) {
 }
 
 async function callGemini(prompt, systemPrompt, options) {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
   const key = process.env.GEMINI_API_KEY;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
   const contents = [];
@@ -123,5 +123,6 @@ function getActiveEngine() {
 }
 
 module.exports = { callAI, getActiveEngine };
+
 
 
