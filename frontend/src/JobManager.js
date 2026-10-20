@@ -25,7 +25,7 @@ export function startJob(agentId, agentName, projectId, formData) {
   saveJobs(jobs);
   notifyListeners();
   const params = new URLSearchParams({ agentId, projectId: projectId || '', ...formData });
-  const streamUrl = agentId === 'btp-admin-agent' ? 'http://localhost:3002/btp-admin-run?' + new URLSearchParams({ projectId: projectId || '', task: formData.task || '', customTask: formData.customTask || '', region: formData.region || '', environment: formData.environment || '' }) : 'http://localhost:3002/generate-stream?' + params;
+  const streamUrl = agentId === 'btp-admin-agent' ? 'http://localhost:3002/btp-admin-run?' + new URLSearchParams({ projectId: projectId || '', task: formData.description || formData.task || '', customTask: formData.customTask || '', region: formData.region || '', environment: formData.environment || '' }) : 'http://localhost:3002/generate-stream?' + params;
   const es = new EventSource(streamUrl);
   es.onmessage = (e) => {
     const msg = JSON.parse(e.data); const { type } = msg; const text = msg.data || msg.message || msg.text || msg.summary || msg.step || '';
@@ -73,3 +73,4 @@ export function updateApproval(jobId, status, approvers, comments) { if (!jobs[j
 export function importJob(job) { if (jobs[job.jobId]) return; jobs[job.jobId] = job; saveJobs(jobs); notifyListeners(); }
 export function subscribe(id, fn) { listeners[id] = fn; }
 export function unsubscribe(id) { delete listeners[id]; }
+

@@ -915,7 +915,16 @@ Rules:
       toolCalls = [];
     }
 
-    send('status', { message: 'Executing ' + toolCalls.length + ' BTP actions...' });
+    // Fallback if AI returns 0 tool calls
+    if (toolCalls.length === 0) {
+      toolCalls = [
+        { tool: 'Subscription-list', args: { global_account: GLOBAL_ACCOUNT, subaccount_id: SUBACCOUNT_ID }, description: 'List all subscriptions' },
+        { tool: 'ServiceInstance-list', args: { global_account: GLOBAL_ACCOUNT, subaccount_id: SUBACCOUNT_ID }, description: 'List service instances' },
+        { tool: 'RoleCollection-list', args: { global_account: GLOBAL_ACCOUNT, subaccount_id: SUBACCOUNT_ID }, description: 'List role collections' }
+      ];
+      send('log', { text: 'AI returned 0 tools, using default assessment tools' });
+    }
+        send('status', { message: 'Executing ' + toolCalls.length + ' BTP actions...' });
 
     const results = [];
     for (const tc of toolCalls) {
@@ -972,4 +981,5 @@ app.listen(MCP_PORT, () => {
   console.log('DeliverAI MCP Server running on port ' + MCP_PORT);
   console.log('Agents loaded: ' + Object.keys(AGENTS).length);
 });
+
 
