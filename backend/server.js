@@ -536,6 +536,7 @@ app.post('/btp-mcp-call', async (req, res) => {
 });
 
 
+
 // ── AI Engine Routes ──────────────────────────────────────────────────────────
 const SUPPORTED_ENGINES = [
   { id: 'claude-code-cli', name: 'Claude Code CLI (Accenture)', requiresKey: false, models: [] },
@@ -549,12 +550,6 @@ app.get('/api/ai-engine', (req, res) => {
   const envPath = require('path').join(__dirname, '../.env');
   const env = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
   const getVal = (key) => { const line = env.split('\n').find(l => l.startsWith(key + '=')); return line ? line.slice(key.length + 1).trim() : ''; };
-  console.log('\n╔══════════════════════════════════════════════╗');
-  console.log('║  DeliverAI Backend           :' + PORT + '          ║');
-  console.log('║  MCP Server:  ' + MCP + '   ║');
-  console.log('╚══════════════════════════════════════════════╝\n');
-});
-, 'm')); return m ? m[1].trim() : ''; };
   res.json({
     engine: getVal('AI_ENGINE') || 'claude-code-cli',
     anthropicKey: getVal('ANTHROPIC_API_KEY') ? '***set***' : '',
@@ -577,16 +572,11 @@ app.post('/api/ai-engine', (req, res) => {
   let env = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
   const setVal = (key, val) => {
     if (!val) return;
-    const regex = new RegExp('^' + key + '=.* () => {
-  console.log('\n╔══════════════════════════════════════════════╗');
-  console.log('║  DeliverAI Backend           :' + PORT + '          ║');
-  console.log('║  MCP Server:  ' + MCP + '   ║');
-  console.log('╚══════════════════════════════════════════════╝\n');
-});
-, 'm');
-    if (regex.test(env)) env = env.replace(regex, key + '=' + val);
-    else env += '
-' + key + '=' + val;
+    const lines = env.split('\n');
+    const idx = lines.findIndex(l => l.startsWith(key + '='));
+    if (idx !== -1) lines[idx] = key + '=' + val;
+    else lines.push(key + '=' + val);
+    env = lines.join('\n');
   };
   setVal('AI_ENGINE', engine);
   if (anthropicKey && anthropicKey !== '***set***') setVal('ANTHROPIC_API_KEY', anthropicKey);
@@ -600,7 +590,6 @@ app.post('/api/ai-engine', (req, res) => {
   if (sapAiEndpoint) setVal('SAP_AI_CORE_ENDPOINT', sapAiEndpoint);
   if (sapAiDeployment) setVal('SAP_AI_CORE_DEPLOYMENT', sapAiDeployment);
   fs.writeFileSync(envPath, env);
-  // Reload env
   require('dotenv').config({ path: envPath, override: true });
   res.json({ success: true, engine });
 });
@@ -615,17 +604,18 @@ app.post('/api/ai-engine/test', async (req, res) => {
       const d = await r.json();
       res.json({ success: r.ok, message: r.ok ? 'Anthropic API connected' : d.error?.message });
     } else if (engine === 'gemini') {
-      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (model||'gemini-2.0-flash') + ':generateContent?key=' + key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] }) });
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (model || 'gemini-2.0-flash') + ':generateContent?key=' + key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] }) });
       const d = await r.json();
       res.json({ success: r.ok, message: r.ok ? 'Gemini API connected' : d.error?.message });
     } else if (engine === 'azure-openai') {
-      const r = await fetch(endpoint + '/openai/deployments/' + (model||'gpt-4o') + '/chat/completions?api-version=2024-02-01', { method: 'POST', headers: { 'Content-Type': 'application/json', 'api-key': key }, body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }], max_tokens: 10 }) });
+      const r = await fetch(endpoint + '/openai/deployments/' + (model || 'gpt-4o') + '/chat/completions?api-version=2024-02-01', { method: 'POST', headers: { 'Content-Type': 'application/json', 'api-key': key }, body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }], max_tokens: 10 }) });
       res.json({ success: r.ok, message: r.ok ? 'Azure OpenAI connected' : 'Connection failed' });
     } else {
       res.json({ success: false, message: 'Unknown engine' });
     }
   } catch(e) { res.json({ success: false, message: e.message }); }
 });
+
 
 app.listen(PORT, () => {
   console.log('\n╔══════════════════════════════════════════════╗');
