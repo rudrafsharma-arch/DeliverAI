@@ -97,7 +97,7 @@ async function callSAPAICore(prompt, systemPrompt, options) {
 
 
 async function callGroq(prompt, systemPrompt, options) {
-  const model = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+  const model = process.env.GROQ_MODEL || 'qwen/qwen3.8-27b';
   const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.GROQ_API_KEY },
@@ -146,6 +146,8 @@ function getActiveEngine() {
 }
 
 module.exports = { callAI, getActiveEngine };
+
+
 
 
 
