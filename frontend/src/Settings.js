@@ -114,6 +114,21 @@ const [connections, setConnections] = React.useState([]);
         <button onClick={() => setShowManager(m => !m)} style={{padding:'6px 12px',borderRadius:7,border:'1px solid #15803d',background:'#fff',color:'#15803d',fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>{showManager ? 'Hide Manager' : 'Manage Connections'}</button>
       </div>
       {showManager && <div style={{marginTop:12}}><ConnectionManager /></div>}
+      <div style={{marginTop:16,background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:16}}>
+        <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>🤖 AI Engine</div>
+        <p style={{fontSize:12,color:'#64748b',margin:'0 0 10px'}}>Choose AI provider. Claude Code CLI uses Accenture subscription. Others need API key.</p>
+        <select value={aiEngine} onChange={e=>setAiEngine(e.target.value)} style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:10}}>
+          {aiEngines.length>0?aiEngines.map(e=><option key={e.id} value={e.id}>{e.name}</option>):<><option value='claude-code-cli'>Claude Code CLI (Accenture)</option><option value='gemini'>Google Gemini</option><option value='anthropic'>Anthropic API</option><option value='azure-openai'>Azure OpenAI</option></>}
+        </select>
+        {aiEngine==='gemini'&&<input type='password' value={geminiKey} onChange={e=>setGeminiKey(e.target.value)} placeholder='Gemini API Key (AIza...)' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
+        {aiEngine==='anthropic'&&<input type='password' value={anthropicKey} onChange={e=>setAnthropicKey(e.target.value)} placeholder='Anthropic API Key (sk-ant-...)' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
+        {aiEngine==='azure-openai'&&<input type='password' value={azureKey} onChange={e=>setAzureKey(e.target.value)} placeholder='Azure OpenAI Key' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
+        <div style={{display:'flex',gap:8,marginTop:10}}>
+          <button onClick={testAiEngine} style={{padding:'6px 14px',borderRadius:7,border:'1px solid #d1d5db',background:'#f8fafc',cursor:'pointer',fontSize:12}}>Test</button>
+          <button onClick={saveAiEngine} style={{padding:'6px 14px',borderRadius:7,border:'none',background:'#0070F2',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:600}}>Save</button>
+        </div>
+        {aiEngineStatus&&<p style={{margin:'8px 0 0',fontSize:12,color:aiEngineStatus.includes('✅')?'#16a34a':'#dc2626'}}>{aiEngineStatus}</p>}
+      </div>
     </div>
   );
 }
