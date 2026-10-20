@@ -881,14 +881,14 @@ After completing the task, output a complete HTML report (starting with <!DOCTYP
     send('status', { message: 'Running Claude Code CLI with BTP MCP...' });
 
     const { spawn } = require('child_process');
-    const proc = spawn(gitBash, [
-      '--login', '-c',
-      claudePath + ' --print --dangerously-skip-permissions --mcp-config ' + mcpConfigFile.split('\\\\').join('/') + ' --strict-mcp-config'
-    ], { env: { ...process.env, HOME: process.env.HOME || process.env.USERPROFILE } });
+    const promptFile = path.join(__dirname, '../.btp-prompt.txt');
+    fs.writeFileSync(promptFile, fullPrompt);
+
+    const mcpCfgPath = mcpConfigFile.split('\\\\').join('/');
+    const promptPath = promptFile.split('\\\\').join('/');
+    const proc = spawn('powershell.exe', ['-Command', 'Get-Content ' + promptFile + ' | claude --print --dangerously-skip-permissions --mcp-config ' + mcpConfigFile + ' --strict-mcp-config'], { env: { ...process.env } });
 
     let output = '';
-    proc.stdin.write(fullPrompt);
-    proc.stdin.end();
 
     proc.stdout.on('data', d => {
       output += d.toString();
