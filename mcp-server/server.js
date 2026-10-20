@@ -926,6 +926,7 @@ Rules:
     }
         send('status', { message: 'Executing ' + toolCalls.length + ' BTP actions...' });
 
+    let btpFileName = '';
     const results = [];
     for (const tc of toolCalls) {
       send('action', { step: tc.tool, description: tc.description || tc.tool });
@@ -961,14 +962,17 @@ results.map(r => `<div class="card">
 
     if (projectId) {
       try {
-        const { saveDocumentToProject } = require('./doc-saver');
-        const proj = loadProject(projectId);
-        if (proj) saveDocumentToProject(projectId, 'btp-admin-agent', 'SAP BTP Admin Agent', html, { ...proj, workstream: 'Platform', processName: 'BTP-Setup' });
+        const projDir = path.join(__dirname, '../projects', projectId);
+        if (fs.existsSync(projDir)) {
+          const fileName = 'btp-admin-agent_v' + Date.now() + '.html';
+          fs.writeFileSync(path.join(projDir, fileName), html);
+          btpFileName = fileName;
+        }
         send('status', { message: 'Report saved to project' });
       } catch(e) {}
     }
 
-    send('complete', { html, actionsExecuted: results.length, succeeded: results.filter(r => r.success).length });
+    send('complete', { html, fileName: btpFileName, agentName: 'SAP BTP Admin Agent', actionsExecuted: results.length, succeeded: results.filter(r => r.success).length });
     res.end();
 
   } catch(e) {
@@ -981,5 +985,6 @@ app.listen(MCP_PORT, () => {
   console.log('DeliverAI MCP Server running on port ' + MCP_PORT);
   console.log('Agents loaded: ' + Object.keys(AGENTS).length);
 });
+
 
 

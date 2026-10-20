@@ -11,6 +11,8 @@ async function callAI(prompt, systemPrompt, options = {}) {
     return callAzureOpenAI(prompt, systemPrompt, options);
   } else if (engine === 'sap-ai-core' && process.env.SAP_AI_CORE_KEY) {
     return callSAPAICore(prompt, systemPrompt, options);
+  } else if (engine === 'groq' && process.env.GROQ_API_KEY) {
+    return callGroq(prompt, systemPrompt, options);
   } else {
     return callClaudeCodeCLI(prompt, systemPrompt, options);
   }
@@ -93,6 +95,26 @@ async function callSAPAICore(prompt, systemPrompt, options) {
   return d.choices?.[0]?.message?.content || '';
 }
 
+
+async function callGroq(prompt, systemPrompt, options) {
+  const model = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.GROQ_API_KEY },
+    body: JSON.stringify({
+      model,
+      max_tokens: options.maxTokens || 8000,
+      messages: [
+        ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+        { role: 'user', content: prompt }
+      ]
+    })
+  });
+  if (!r.ok) throw new Error('Groq API error: ' + r.status + ' ' + await r.text());
+  const d = await r.json();
+  return d.choices?.[0]?.message?.content || '';
+}
+
 async function callClaudeCodeCLI(prompt, systemPrompt, options) {
   const { spawn } = require('child_process');
   const fs = require('fs');
@@ -119,6 +141,7 @@ function getActiveEngine() {
   if (engine === 'gemini' && process.env.GEMINI_API_KEY) return 'gemini';
   if (engine === 'azure-openai' && process.env.AZURE_OPENAI_KEY) return 'azure-openai';
   if (engine === 'sap-ai-core' && process.env.SAP_AI_CORE_KEY) return 'sap-ai-core';
+  if (engine === 'groq' && process.env.GROQ_API_KEY) return 'groq';
   return 'claude-code-cli';
 }
 

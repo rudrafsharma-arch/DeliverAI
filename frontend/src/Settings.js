@@ -118,10 +118,11 @@ const [connections, setConnections] = React.useState([]);
         <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>🤖 AI Engine</div>
         <p style={{fontSize:12,color:'#64748b',margin:'0 0 10px'}}>Choose AI provider. Claude Code CLI uses Accenture subscription. Others need API key.</p>
         <select value={aiEngine} onChange={e=>setAiEngine(e.target.value)} style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:10}}>
-          {aiEngines.length>0?aiEngines.map(e=><option key={e.id} value={e.id}>{e.name}</option>):<><option value='claude-code-cli'>Claude Code CLI (Accenture)</option><option value='gemini'>Google Gemini</option><option value='anthropic'>Anthropic API</option><option value='azure-openai'>Azure OpenAI</option></>}
+          {aiEngines.length>0?aiEngines.map(e=><option key={e.id} value={e.id}>{e.name}</option>):<><option value='claude-code-cli'>Claude Code CLI (Accenture)</option><option value='gemini'>Google Gemini</option><option value='anthropic'>Anthropic API</option><option value='azure-openai'>Azure OpenAI</option><option value='groq'>Groq (Free)</option></>}
         </select>
         {aiEngine==='gemini'&&<input type='password' value={geminiKey} onChange={e=>setGeminiKey(e.target.value)} placeholder='Gemini API Key (AIza...)' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
         {aiEngine==='anthropic'&&<input type='password' value={anthropicKey} onChange={e=>setAnthropicKey(e.target.value)} placeholder='Anthropic API Key (sk-ant-...)' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
+        {aiEngine==='groq'&&<input type='password' value={geminiKey} onChange={e=>setGeminiKey(e.target.value)} placeholder='Groq API Key (gsk_...)' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
         {aiEngine==='azure-openai'&&<input type='password' value={azureKey} onChange={e=>setAzureKey(e.target.value)} placeholder='Azure OpenAI Key' style={{width:'100%',padding:'7px',borderRadius:7,border:'1px solid #d1d5db',fontSize:13,marginBottom:6,boxSizing:'border-box'}}/>}
         <div style={{display:'flex',gap:8,marginTop:10}}>
           <button onClick={testAiEngine} style={{padding:'6px 14px',borderRadius:7,border:'1px solid #d1d5db',background:'#f8fafc',cursor:'pointer',fontSize:12}}>Test</button>

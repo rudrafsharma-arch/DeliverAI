@@ -543,7 +543,8 @@ const SUPPORTED_ENGINES = [
   { id: 'anthropic', name: 'Anthropic API', requiresKey: true, models: ['claude-opus-4-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'] },
   { id: 'gemini', name: 'Google Gemini', requiresKey: true, models: ['gemini-3.5-flash', 'gemini-3.1-pro-preview', 'gemini-3.5-flash'] },
   { id: 'azure-openai', name: 'Azure OpenAI', requiresKey: true, models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'] },
-  { id: 'sap-ai-core', name: 'SAP AI Core', requiresKey: true, models: ['gpt-4o', 'claude-3-sonnet', 'gemini-1.0-pro'] }
+  { id: 'sap-ai-core', name: 'SAP AI Core', requiresKey: true, models: ['gpt-4o', 'claude-3-sonnet', 'gemini-1.0-pro'] },
+  { id: 'groq', name: 'Groq (Free)', requiresKey: true, models: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'mixtral-8x7b-32768'] }
 ];
 
 app.get('/api/ai-engine', (req, res) => {
@@ -610,6 +611,10 @@ app.post('/api/ai-engine/test', async (req, res) => {
     } else if (engine === 'azure-openai') {
       const r = await fetch(endpoint + '/openai/deployments/' + (model || 'gpt-4o') + '/chat/completions?api-version=2024-02-01', { method: 'POST', headers: { 'Content-Type': 'application/json', 'api-key': key }, body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }], max_tokens: 10 }) });
       res.json({ success: r.ok, message: r.ok ? 'Azure OpenAI connected' : 'Connection failed' });
+    } else if (engine === 'groq') {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key }, body: JSON.stringify({ model: model || 'llama-3.1-8b-instant', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] }) });
+      const d = await r.json();
+      res.json({ success: r.ok, message: r.ok ? 'Groq API connected' : (d.error?.message || 'Failed') });
     } else {
       res.json({ success: false, message: 'Unknown engine' });
     }
