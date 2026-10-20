@@ -46,7 +46,18 @@ const SECTIONS=[
     {key:'SNOW_PASSWORD',label:'Password',placeholder:'...',secret:true}]},
 ];
 function ActiveConnectionPicker() {
-  const [connections, setConnections] = React.useState([]);
+  
+  const [aiEngine, setAiEngine] = React.useState('claude-code-cli');
+  const [aiEngines, setAiEngines] = React.useState([]);
+  const [anthropicKey, setAnthropicKey] = React.useState('');
+  const [anthropicModel, setAnthropicModel] = React.useState('claude-sonnet-4-6');
+  const [geminiKey, setGeminiKey] = React.useState('');
+  const [geminiModel, setGeminiModel] = React.useState('gemini-2.0-flash');
+  const [azureKey, setAzureKey] = React.useState('');
+  const [azureEndpoint, setAzureEndpoint] = React.useState('');
+  const [azureDeployment, setAzureDeployment] = React.useState('gpt-4o');
+  const [aiEngineStatus, setAiEngineStatus] = React.useState('');
+const [connections, setConnections] = React.useState([]);
   const [activeId, setActiveId] = React.useState(null);
   const [saving, setSaving] = React.useState(false);
   const [showManager, setShowManager] = React.useState(false);
@@ -58,6 +69,39 @@ function ActiveConnectionPicker() {
     try { await fetch('/api/connections/active',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})}); setActiveId(id); } catch(e) {}
     setSaving(false);
   };
+
+  React.useEffect(() => {
+    fetch('http://localhost:3005/api/ai-engine').then(r => r.json()).then(d => {
+      setAiEngine(d.engine || 'claude-code-cli');
+      setAiEngines(d.engines || []);
+      setAnthropicModel(d.anthropicModel || 'claude-sonnet-4-6');
+      setGeminiModel(d.geminiModel || 'gemini-2.0-flash');
+      setAzureEndpoint(d.azureEndpoint || '');
+      setAzureDeployment(d.azureDeployment || 'gpt-4o');
+      if (d.anthropicKey === '***set***') setAnthropicKey('***set***');
+      if (d.geminiKey === '***set***') setGeminiKey('***set***');
+      if (d.azureKey === '***set***') setAzureKey('***set***');
+    }).catch(() => {});
+  }, []);
+
+  const saveAiEngine = async () => {
+    try {
+      const r = await fetch('http://localhost:3005/api/ai-engine', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ engine: aiEngine, anthropicKey, anthropicModel, geminiKey, geminiModel, azureKey, azureEndpoint, azureDeployment }) });
+      const d = await r.json();
+      setAiEngineStatus(d.success ? '✅ Saved! Restart MCP server to apply.' : '❌ Save failed');
+    } catch(e) { setAiEngineStatus('❌ Error: ' + e.message); }
+  };
+
+  const testAiEngine = async () => {
+    setAiEngineStatus('Testing...');
+    try {
+      const key = aiEngine === 'anthropic' ? anthropicKey : aiEngine === 'gemini' ? geminiKey : azureKey;
+      const r = await fetch('http://localhost:3005/api/ai-engine/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ engine: aiEngine, key, endpoint: azureEndpoint, model: aiEngine === 'anthropic' ? anthropicModel : geminiModel }) });
+      const d = await r.json();
+      setAiEngineStatus(d.success ? '✅ ' + d.message : '❌ ' + d.message);
+    } catch(e) { setAiEngineStatus('❌ Error: ' + e.message); }
+  };
+
   return (
     <div style={{marginTop:16,padding:'14px 16px',background:'#f0fdf4',borderRadius:10,border:'1px solid #86efac'}}>
       <div style={{display:'flex',alignItems:'center',gap:12}}>
@@ -322,3 +366,60 @@ export default function Settings(){
     </div>
   );
 }
+{/* AI Engine Section */}
+<div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 24, marginBottom: 24 }}>
+  <h3 style={{ margin: '0 0 16px', color: '#1e293b', fontSize: 16, fontWeight: 600 }}>🤖 AI Engine</h3>
+  <p style={{ color: '#64748b', fontSize: 13, marginBottom: 16 }}>Choose which AI provider powers your agents. Claude Code CLI uses your Accenture subscription. API keys are stored locally in your .env file.</p>
+  
+  <div style={{ marginBottom: 16 }}>
+    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>Provider</label>
+    <select value={aiEngine} onChange={e => setAiEngine(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14 }}>
+      {aiEngines.map(e => <option key={e.id} value={e.id}>{e.name}{!e.requiresKey ? ' ✓ Active' : ''}</option>)}
+    </select>
+  </div>
+
+  {aiEngine === 'anthropic' && (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Anthropic API Key</label>
+      <input type="password" value={anthropicKey} onChange={e => setAnthropicKey(e.target.value)} placeholder="sk-ant-..." style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, marginTop: 10 }}>Model</label>
+      <select value={anthropicModel} onChange={e => setAnthropicModel(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14 }}>
+        <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+        <option value="claude-opus-4-5">Claude Opus 4.5</option>
+        <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
+      </select>
+    </div>
+  )}
+
+  {aiEngine === 'gemini' && (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Gemini API Key</label>
+      <input type="password" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} placeholder="AIza..." style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, marginTop: 10 }}>Model</label>
+      <select value={geminiModel} onChange={e => setGeminiModel(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14 }}>
+        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+      </select>
+    </div>
+  )}
+
+  {aiEngine === 'azure-openai' && (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Azure OpenAI Key</label>
+      <input type="password" value={azureKey} onChange={e => setAzureKey(e.target.value)} placeholder="Azure API Key" style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, marginTop: 10 }}>Endpoint</label>
+      <input type="text" value={azureEndpoint} onChange={e => setAzureEndpoint(e.target.value)} placeholder="https://your-resource.openai.azure.com" style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, marginTop: 10 }}>Deployment</label>
+      <input type="text" value={azureDeployment} onChange={e => setAzureDeployment(e.target.value)} placeholder="gpt-4o" style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+    </div>
+  )}
+
+  <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+    <button onClick={testAiEngine} style={{ padding: '8px 16px', background: '#f1f5f9', border: '1px solid #d1d5db', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>Test Connection</button>
+    <button onClick={saveAiEngine} style={{ padding: '8px 20px', background: '#0070F2', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Save</button>
+  </div>
+  {aiEngineStatus && <p style={{ marginTop: 10, fontSize: 13, color: aiEngineStatus.includes('✅') ? '#16a34a' : '#dc2626' }}>{aiEngineStatus}</p>}
+</div>
+
+

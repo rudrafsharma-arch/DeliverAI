@@ -535,6 +535,98 @@ app.post('/btp-mcp-call', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// ── AI Engine Routes ──────────────────────────────────────────────────────────
+const SUPPORTED_ENGINES = [
+  { id: 'claude-code-cli', name: 'Claude Code CLI (Accenture)', requiresKey: false, models: [] },
+  { id: 'anthropic', name: 'Anthropic API', requiresKey: true, models: ['claude-opus-4-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'] },
+  { id: 'gemini', name: 'Google Gemini', requiresKey: true, models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'] },
+  { id: 'azure-openai', name: 'Azure OpenAI', requiresKey: true, models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'] },
+  { id: 'sap-ai-core', name: 'SAP AI Core', requiresKey: true, models: ['gpt-4o', 'claude-3-sonnet', 'gemini-1.0-pro'] }
+];
+
+app.get('/api/ai-engine', (req, res) => {
+  const envPath = require('path').join(__dirname, '../.env');
+  const env = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
+  const getVal = (key) => { const m = env.match(new RegExp('^' + key + '=(.+) () => {
+  console.log('\n╔══════════════════════════════════════════════╗');
+  console.log('║  DeliverAI Backend           :' + PORT + '          ║');
+  console.log('║  MCP Server:  ' + MCP + '   ║');
+  console.log('╚══════════════════════════════════════════════╝\n');
+});
+, 'm')); return m ? m[1].trim() : ''; };
+  res.json({
+    engine: getVal('AI_ENGINE') || 'claude-code-cli',
+    anthropicKey: getVal('ANTHROPIC_API_KEY') ? '***set***' : '',
+    anthropicModel: getVal('ANTHROPIC_MODEL') || 'claude-sonnet-4-6',
+    geminiKey: getVal('GEMINI_API_KEY') ? '***set***' : '',
+    geminiModel: getVal('GEMINI_MODEL') || 'gemini-2.0-flash',
+    azureKey: getVal('AZURE_OPENAI_KEY') ? '***set***' : '',
+    azureEndpoint: getVal('AZURE_OPENAI_ENDPOINT') || '',
+    azureDeployment: getVal('AZURE_OPENAI_DEPLOYMENT') || 'gpt-4o',
+    sapAiKey: getVal('SAP_AI_CORE_KEY') ? '***set***' : '',
+    sapAiEndpoint: getVal('SAP_AI_CORE_ENDPOINT') || '',
+    sapAiDeployment: getVal('SAP_AI_CORE_DEPLOYMENT') || '',
+    engines: SUPPORTED_ENGINES
+  });
+});
+
+app.post('/api/ai-engine', (req, res) => {
+  const { engine, anthropicKey, anthropicModel, geminiKey, geminiModel, azureKey, azureEndpoint, azureDeployment, sapAiKey, sapAiEndpoint, sapAiDeployment } = req.body;
+  const envPath = require('path').join(__dirname, '../.env');
+  let env = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
+  const setVal = (key, val) => {
+    if (!val) return;
+    const regex = new RegExp('^' + key + '=.* () => {
+  console.log('\n╔══════════════════════════════════════════════╗');
+  console.log('║  DeliverAI Backend           :' + PORT + '          ║');
+  console.log('║  MCP Server:  ' + MCP + '   ║');
+  console.log('╚══════════════════════════════════════════════╝\n');
+});
+, 'm');
+    if (regex.test(env)) env = env.replace(regex, key + '=' + val);
+    else env += '
+' + key + '=' + val;
+  };
+  setVal('AI_ENGINE', engine);
+  if (anthropicKey && anthropicKey !== '***set***') setVal('ANTHROPIC_API_KEY', anthropicKey);
+  if (anthropicModel) setVal('ANTHROPIC_MODEL', anthropicModel);
+  if (geminiKey && geminiKey !== '***set***') setVal('GEMINI_API_KEY', geminiKey);
+  if (geminiModel) setVal('GEMINI_MODEL', geminiModel);
+  if (azureKey && azureKey !== '***set***') setVal('AZURE_OPENAI_KEY', azureKey);
+  if (azureEndpoint) setVal('AZURE_OPENAI_ENDPOINT', azureEndpoint);
+  if (azureDeployment) setVal('AZURE_OPENAI_DEPLOYMENT', azureDeployment);
+  if (sapAiKey && sapAiKey !== '***set***') setVal('SAP_AI_CORE_KEY', sapAiKey);
+  if (sapAiEndpoint) setVal('SAP_AI_CORE_ENDPOINT', sapAiEndpoint);
+  if (sapAiDeployment) setVal('SAP_AI_CORE_DEPLOYMENT', sapAiDeployment);
+  fs.writeFileSync(envPath, env);
+  // Reload env
+  require('dotenv').config({ path: envPath, override: true });
+  res.json({ success: true, engine });
+});
+
+app.post('/api/ai-engine/test', async (req, res) => {
+  const { engine, key, endpoint, model } = req.body;
+  try {
+    if (engine === 'claude-code-cli') {
+      res.json({ success: true, message: 'Claude Code CLI is configured' });
+    } else if (engine === 'anthropic') {
+      const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: model || 'claude-sonnet-4-6', max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] }) });
+      const d = await r.json();
+      res.json({ success: r.ok, message: r.ok ? 'Anthropic API connected' : d.error?.message });
+    } else if (engine === 'gemini') {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + (model||'gemini-2.0-flash') + ':generateContent?key=' + key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] }) });
+      const d = await r.json();
+      res.json({ success: r.ok, message: r.ok ? 'Gemini API connected' : d.error?.message });
+    } else if (engine === 'azure-openai') {
+      const r = await fetch(endpoint + '/openai/deployments/' + (model||'gpt-4o') + '/chat/completions?api-version=2024-02-01', { method: 'POST', headers: { 'Content-Type': 'application/json', 'api-key': key }, body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }], max_tokens: 10 }) });
+      res.json({ success: r.ok, message: r.ok ? 'Azure OpenAI connected' : 'Connection failed' });
+    } else {
+      res.json({ success: false, message: 'Unknown engine' });
+    }
+  } catch(e) { res.json({ success: false, message: e.message }); }
+});
+
 app.listen(PORT, () => {
   console.log('\n╔══════════════════════════════════════════════╗');
   console.log('║  DeliverAI Backend           :' + PORT + '          ║');

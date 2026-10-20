@@ -151,6 +151,7 @@ const { spawn } = require('child_process');
 const Orchestrator = require('./orchestrator');
 const fs = require('fs');
 const path = require('path');
+const { callAI, getActiveEngine } = require('./ai-engine');
 
 const app = express();
 app.use(cors());
@@ -828,9 +829,43 @@ app.get('/btp-admin-run', async (req, res) => {
   res.flushHeaders();
   const send = (type, data) => res.write('data: ' + JSON.stringify({ type, ...data }) + '\n\n');
 
+  const MCP_URL = 'https://sso.mcp.btp.cloud.sap/mcp';
+  const GLOBAL_ACCOUNT = '8cede957trial-ga';
+  const SUBACCOUNT_ID = '4e2eaf4b-4463-4be9-9926-7cf17e8adaba';
+
+  async function callBTPTool(toolName, args, token) {
+    const r = await fetch(MCP_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method: 'tools/call', params: { name: toolName, arguments: args } })
+    });
+    const text = await r.text();
+    for (const line of text.split('\n')) {
+      if (line.startsWith('data: ')) {
+        try { return JSON.parse(line.replace('data: ', '')); } catch(e) {}
+      }
+    }
+    return null;
+  }
+
+  async function getBTPTools(token) {
+    const r = await fetch(MCP_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} })
+    });
+    const text = await r.text();
+    for (const line of text.split('\n')) {
+      if (line.startsWith('data: ')) {
+        try { return JSON.parse(line.replace('data: ', ''))?.result?.tools || []; } catch(e) {}
+      }
+    }
+    return [];
+  }
+
   try {
     const { task, projectId } = req.query;
-    const instruction = task || 'Full Platform Assessment of my BTP trial account';
+    const instruction = task || 'Full Platform Assessment';
 
     // Get token
     const tokenFile = path.join(__dirname, '../btp_tokens.json');
@@ -840,90 +875,92 @@ app.get('/btp-admin-run', async (req, res) => {
     if (!token) { send('error', { message: 'No BTP token found' }); res.end(); return; }
 
     send('status', { message: 'Connected to SAP BTP Admin MCP' });
+    send('status', { message: 'Using AI engine: ' + getActiveEngine() });
 
-    // Write temp MCP config for Claude Code
-    const mcpConfig = {
-      mcpServers: {
-        "BTP Administration": {
-          type: "streamableHttp",
-          url: "https://sso.mcp.btp.cloud.sap/mcp",
-          headers: { Authorization: "Bearer " + token }
-        }
-      }
-    };
-    const mcpConfigFile = path.join(__dirname, '../.btp-mcp-config.json');
-    fs.writeFileSync(mcpConfigFile, JSON.stringify(mcpConfig, null, 2));
-    send('status', { message: 'BTP MCP config prepared' });
+    // Get tools
+    send('status', { message: 'Loading BTP Admin tools...' });
+    const tools = await getBTPTools(token);
+    send('status', { message: 'Loaded ' + tools.length + ' tools' });
 
-    // Build prompt for Claude Code
-    const fullPrompt = `You are a SAP BTP Administrator. You have access to the SAP BTP Administration MCP server via the "BTP Administration" MCP connection.
+    // Ask AI which tools to call
+    const systemPrompt = `You are a SAP BTP Administrator. You must respond with ONLY a valid JSON array of tool calls.
+
+Available BTP Admin tools: ${tools.map(t => t.name + ': ' + (t.description || '')).join('\n')}
 
 Context:
-- Global Account subdomain: 8cede957trial-ga
-- Subaccount ID: 4e2eaf4b-4463-4be9-9926-7cf17e8adaba
-- User email: vikram.f.sharma@gmail.com
-- Region: AP21 Singapore Azure
+- global_account: "${GLOBAL_ACCOUNT}"
+- subaccount_id: "${SUBACCOUNT_ID}"  
+- user_name: "vikram.f.sharma@gmail.com"
 
-User instruction: ${instruction}
+Rules:
+- Respond with ONLY a JSON array, no markdown, no explanation
+- Each item: {"tool": "ToolName", "args": {...}, "description": "what this does"}
+- Always include global_account and subaccount_id in args where needed
+- Maximum 5 tool calls
+- For read operations use list/get tools
+- For write operations use create/assign tools`;
 
-Please use the BTP Administration MCP tools to complete this task. Execute the necessary tool calls, show the results, and provide a summary of what was done and what the outcome was.
+    send('status', { message: 'Analyzing instruction...' });
+    const aiResponse = await callAI(instruction, systemPrompt, { maxTokens: 1000 });
+    send('log', { text: 'AI response: ' + aiResponse.substring(0, 100) });
 
-After completing the task, output a complete HTML report (starting with <!DOCTYPE html>) summarizing:
-1. What actions were taken
-2. Results of each action (success/failure)
-3. Current state after the actions
-4. Any next steps needed`;
+    let toolCalls = [];
+    try {
+      const clean = aiResponse.replace(/```json|```/g, '').trim();
+      const jsonMatch = clean.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (jsonMatch) toolCalls = JSON.parse(jsonMatch[0]);
+      else toolCalls = JSON.parse(clean);
+    } catch(e) {
+      send('log', { text: 'Parse error: ' + e.message });
+      toolCalls = [];
+    }
 
-    const gitBash = process.env.GIT_BASH_PATH;
-    const claudePath = process.env.CLAUDE_PATH;
-    if (!gitBash || !claudePath) { send('error', { message: 'Claude CLI not configured in .env' }); res.end(); return; }
+    send('status', { message: 'Executing ' + toolCalls.length + ' BTP actions...' });
 
-    send('status', { message: 'Running Claude Code CLI with BTP MCP...' });
-    // Refresh token in Claude Code CLI settings
-    try { const cs=JSON.parse(fs.readFileSync(path.join(process.env.USERPROFILE,'.claude/settings.local.json'),'utf8')); if(!cs.mcpServers)cs.mcpServers={}; cs.mcpServers['BTP Administration']={type:'streamableHttp',url:'https://sso.mcp.btp.cloud.sap/mcp',headers:{Authorization:'Bearer '+token}}; fs.writeFileSync(path.join(process.env.USERPROFILE,'.claude/settings.local.json'),JSON.stringify(cs,null,2)); send('status',{message:'Fresh token injected into Claude Code CLI'}); } catch(e){}
-
-    const { spawn } = require('child_process');
-    const promptFile = path.join(__dirname, '../.btp-prompt.txt');
-    fs.writeFileSync(promptFile, fullPrompt);
-
-    const mcpCfgPath = mcpConfigFile.split('\\\\').join('/');
-    const promptPath = promptFile.split('\\\\').join('/');
-    const proc = spawn('powershell.exe', ['-Command', 'Get-Content ' + promptFile + ' | claude --print --dangerously-skip-permissions'], { env: { ...process.env } });
-
-    let output = '';
-
-    proc.stdout.on('data', d => {
-      output += d.toString();
-      send('progress', { text: d.toString().substring(0, 100) });
-    });
-    proc.stderr.on('data', d => send('log', { text: d.toString().substring(0, 100) }));
-
-    proc.on('close', () => {
-      // Clean up temp config
-      try { fs.unlinkSync(mcpConfigFile); } catch(e) {}
-
-      const html = output.includes('<!DOCTYPE') 
-        ? output.substring(output.indexOf('<!DOCTYPE'))
-        : `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BTP Admin Report</title>
-<style>body{font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:20px}h1{color:#0070F2}pre{background:#f8fafc;padding:16px;border-radius:8px;white-space:pre-wrap}</style>
-</head><body><h1>BTP Admin Report</h1><p><strong>Instruction:</strong> ${instruction}</p>
-<p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-<pre>${output || 'No output received from Claude CLI'}</pre></body></html>`;
-
-      if (projectId) {
-        try {
-          const { saveDocumentToProject } = require('./doc-saver');
-          const proj = loadProject(projectId);
-          if (proj) saveDocumentToProject(projectId, 'btp-admin-agent', 'SAP BTP Admin Agent', html, { ...proj, workstream: 'Platform', processName: 'BTP-Setup' });
-          send('status', { message: 'Report saved to project' });
-        } catch(e) {}
+    const results = [];
+    for (const tc of toolCalls) {
+      send('action', { step: tc.tool, description: tc.description || tc.tool });
+      try {
+        const result = await callBTPTool(tc.tool, tc.args, token);
+        const resultText = result?.result?.content?.[0]?.text || JSON.stringify(result?.result || result);
+        const success = !resultText.toLowerCase().includes('"code"') || resultText.includes('success');
+        results.push({ tool: tc.tool, description: tc.description, result: resultText, success });
+        send('action_result', { step: tc.tool, success, summary: resultText.substring(0, 300) });
+      } catch(e) {
+        results.push({ tool: tc.tool, description: tc.description, error: e.message, success: false });
+        send('action_result', { step: tc.tool, success: false, error: e.message });
       }
+    }
 
-      send('complete', { html, actionsExecuted: 1, succeeded: 1 });
-      res.end();
-    });
+    // Generate HTML report
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>BTP Admin Report</title>
+<style>body{font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:20px}h1{color:#0070F2}h2{color:#333;border-bottom:2px solid #0070F2;padding-bottom:8px}.ok{color:#16a34a;font-weight:bold}.fail{color:#dc2626;font-weight:bold}.card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:12px 0}.badge{background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:bold}pre{background:#0f172a;color:#e2e8f0;padding:12px;border-radius:6px;font-size:12px;overflow-x:auto;white-space:pre-wrap}</style>
+</head><body>
+<h1>SAP BTP Admin Report <span class="badge">DRAFT</span></h1>
+<p><strong>Instruction:</strong> ${instruction}</p>
+<p><strong>AI Engine:</strong> ${getActiveEngine()} | <strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+<p><strong>Global Account:</strong> ${GLOBAL_ACCOUNT} | <strong>Subaccount:</strong> ${SUBACCOUNT_ID}</p>
+<h2>Actions Executed (${results.filter(r=>r.success).length}/${results.length} succeeded)</h2>
+${results.length === 0 ? '<div class="card"><p class="fail">❌ No actions were executed. The AI could not determine the right tool calls.</p></div>' :
+results.map(r => `<div class="card">
+<p class="${r.success ? 'ok' : 'fail'}">${r.success ? '✅' : '❌'} ${r.tool}</p>
+<p style="color:#64748b">${r.description || ''}</p>
+<pre>${(r.result || r.error || '').substring(0, 800)}</pre>
+</div>`).join('')}
+</body></html>`;
 
-    proc.on('error', e => { send('error', { message: e.message }); res.end(); });
+    if (projectId) {
+      try {
+        const { saveDocumentToProject } = require('./doc-saver');
+        const proj = loadProject(projectId);
+        if (proj) saveDocumentToProject(projectId, 'btp-admin-agent', 'SAP BTP Admin Agent', html, { ...proj, workstream: 'Platform', processName: 'BTP-Setup' });
+        send('status', { message: 'Report saved to project' });
+      } catch(e) {}
+    }
+
+    send('complete', { html, actionsExecuted: results.length, succeeded: results.filter(r => r.success).length });
+    res.end();
 
   } catch(e) {
     send('error', { message: e.message });
