@@ -867,7 +867,7 @@ app.get('/btp-admin-run', async (req, res) => {
     send('action_result', { step: 'Check Subscriptions', success: true, summary: subsText.substring(0, 300) });
 
     // Check if Integration Suite is subscribed
-    const isSubscribed = subsText.toLowerCase().includes('integrationsuite') && subsText.includes('"SUBSCRIBED"');
+    const isSubscribed = subsText.includes('integrationsuite-trial') && subsText.includes('SUBSCRIBED') || subsText.includes('integrationsuite'') && subsText.includes('SUBSCRIBED');
     send('status', { message: 'Integration Suite subscribed: ' + (isSubscribed ? 'YES' : 'NO') });
 
     if (!isSubscribed) {
