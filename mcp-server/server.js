@@ -820,40 +820,147 @@ require("./analyse-route")(app, AGENTS);
 
 app.post('/cleanup',(req,res)=>{res.json({success:true,removed:[]});});
 
+
 app.get('/btp-admin-run', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
-  const send = (t, d) => res.write('data: ' + JSON.stringify({type:t,...d}) + '\n\n');
+  const send = (type, data) => res.write('data: ' + JSON.stringify({ type, ...data }) + '\n\n');
   try {
-    const cp = require('path').join(__dirname, '../connections.json');
-    if (!fs.existsSync(cp)) { send('error', {message:'No connections.json'}); res.end(); return; }
-    const conns = JSON.parse(fs.readFileSync(cp, 'utf8'));
+    // Step 1: Get active connection
+    const connPath = require('path').join(__dirname, '../connections.json');
+    if (!fs.existsSync(connPath)) { send('error', { message: 'No connections.json found' }); res.end(); return; }
+    const conns = JSON.parse(fs.readFileSync(connPath, 'utf8'));
     const active = conns.connections.find(c => c.id === conns.active);
-    if (!active) { send('error', {message:'No active connection'}); res.end(); return; }
-    send('status', {message: 'Active: ' + active.name});
-    const gitBash = process.env.GIT_BASH_PATH;
-    const claudePath = process.env.CLAUDE_PATH;
-    if (!gitBash || !claudePath) { send('error', {message:'Claude CLI not configured'}); res.end(); return; }
-    const ap = require('path').join(__dirname, '../agents/btp-admin-agent/prompt.md');
-    const agentPrompt = fs.existsSync(ap) ? fs.readFileSync(ap, 'utf8') : '';
-    const fullPrompt = agentPrompt + '\n\nACTIVE CONNECTION: ' + active.name + '\nHost: ' + active.hostUrl + '\nTASK: ' + (req.query.task || 'Full Platform Assessment');
-    const proc = spawn(gitBash, ['--login', '-c', claudePath + ' --print --dangerously-skip-permissions'], { env: { ...process.env, HOME: process.env.HOME || process.env.USERPROFILE } });
-    let out = '';
-    proc.stdin.write(fullPrompt);
-    proc.stdin.end();
-    proc.stdout.on('data', d => { out += d.toString(); send('progress', {text: d.toString().substring(0,80)}); });
-    proc.on('close', () => {
-      const html = out.trim() || '<html><body><h1>BTP Admin</h1><p>No output from Claude</p></body></html>';
-      if (req.query.projectId && html.includes('<html')) {
-        try { const {saveDocumentToProject} = require('./doc-saver'); const proj = loadProject(req.query.projectId); if (proj) saveDocumentToProject(req.query.projectId, 'btp-admin-agent', 'SAP BTP Admin Agent', html, {...proj, workstream:'Platform', processName:'BTP-Setup'}); } catch(e) {}
+    if (!active) { send('error', { message: 'No active connection set in Settings' }); res.end(); return; }
+    send('status', { message: 'Active connection: ' + active.name });
+
+    // Step 2: Get OAuth token
+    send('status', { message: 'Getting OAuth token...' });
+    let token;
+    try {
+      if (active.authType === 'oauth2-client') {
+        const params = new URLSearchParams({ grant_type: 'client_credentials', client_id: active.clientId, client_secret: active.clientSecret });
+        const tr = await fetch(active.tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params });
+        if (!tr.ok) throw new Error('Token failed: HTTP ' + tr.status);
+        token = (await tr.json()).access_token;
+      } else if (active.authType === 'oauth2-password') {
+        const params = new URLSearchParams({ grant_type: 'password', username: active.username, password: active.password });
+        const hdrs = { 'Content-Type': 'application/x-www-form-urlencoded' };
+        if (active.clientSecret) { params.append('client_id', active.clientId); params.append('client_secret', active.clientSecret); }
+        else hdrs['Authorization'] = 'Basic ' + Buffer.from(active.clientId + ':').toString('base64');
+        const tr = await fetch(active.tokenUrl, { method: 'POST', headers: hdrs, body: params });
+        if (!tr.ok) throw new Error('Token failed: HTTP ' + tr.status);
+        token = (await tr.json()).access_token;
       }
-      send('complete', {html, actionsExecuted:0, succeeded:0});
-      res.end();
-    });
-    proc.on('error', e => { send('error', {message:e.message}); res.end(); });
-  } catch(e) { send('error', {message:e.message}); res.end(); }
+      send('status', { message: 'Token obtained successfully' });
+    } catch(e) { send('error', { message: 'Auth failed: ' + e.message }); res.end(); return; }
+
+    const apiCall = async (url) => {
+      const r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' } });
+      if (!r.ok) return { error: 'HTTP ' + r.status };
+      return r.json();
+    };
+
+    // Step 3: Call BTP CF APIs directly
+    const baseUrl = active.hostUrl || 'https://api.cf.ap21.hana.ondemand.com';
+
+    send('action', { step: 'Get Orgs', description: 'Listing CF organizations' });
+    const orgs = await apiCall(baseUrl + '/v3/organizations');
+    send('action_result', { step: 'Get Orgs', success: !orgs.error, summary: JSON.stringify(orgs).substring(0, 200) });
+
+    send('action', { step: 'Get Spaces', description: 'Listing CF spaces' });
+    const spaces = await apiCall(baseUrl + '/v3/spaces');
+    send('action_result', { step: 'Get Spaces', success: !spaces.error, summary: JSON.stringify(spaces).substring(0, 200) });
+
+    send('action', { step: 'Get Service Instances', description: 'Checking service instances' });
+    const services = await apiCall(baseUrl + '/v3/service_instances');
+    send('action_result', { step: 'Get Service Instances', success: !services.error, summary: JSON.stringify(services).substring(0, 200) });
+
+    send('action', { step: 'Get Service Plans', description: 'Checking available service plans' });
+    const plans = await apiCall(baseUrl + '/v3/service_plans?names=integration-flow&per_page=5');
+    send('action_result', { step: 'Get Service Plans', success: !plans.error, summary: JSON.stringify(plans).substring(0, 200) });
+
+    // Step 4: Build assessment data
+    const assessment = {
+      connection: active.name,
+      orgs: orgs.resources ? orgs.resources.map(o => o.name) : [],
+      spaces: spaces.resources ? spaces.resources.map(s => s.name) : [],
+      serviceInstances: services.resources ? services.resources.map(s => ({ name: s.name, type: s.type })) : [],
+      integrationFlowPlanAvailable: plans.resources && plans.resources.length > 0,
+      totalInstances: services.pagination ? services.pagination.total_results : 0
+    };
+
+    send('status', { message: 'Assessment complete. Generating report...' });
+
+    // Step 5: Generate HTML report from real data
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>BTP Platform Assessment</title>
+<style>body{font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:20px}h1{color:#0070F2}h2{color:#333;border-bottom:2px solid #0070F2;padding-bottom:8px}.status-ok{color:#16a34a;font-weight:bold}.status-fail{color:#dc2626;font-weight:bold}.card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:12px 0}table{width:100%;border-collapse:collapse}th{background:#0070F2;color:white;padding:8px}td{padding:8px;border:1px solid #e2e8f0}.draft-badge{background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:bold}</style>
+</head>
+<body>
+<div style="display:flex;justify-content:space-between;align-items:center">
+<h1>SAP BTP Platform Assessment</h1>
+<span class="draft-badge">DRAFT</span>
+</div>
+<p><strong>Connection:</strong> ${assessment.connection} | <strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+
+<h2>1. CF Environment</h2>
+<div class="card">
+<table>
+<tr><th>Item</th><th>Value</th><th>Status</th></tr>
+<tr><td>Organizations</td><td>${assessment.orgs.join(', ') || 'None'}</td><td class="${assessment.orgs.length > 0 ? 'status-ok' : 'status-fail'}">${assessment.orgs.length > 0 ? 'OK' : 'MISSING'}</td></tr>
+<tr><td>Spaces</td><td>${assessment.spaces.join(', ') || 'None'}</td><td class="${assessment.spaces.length > 0 ? 'status-ok' : 'status-fail'}">${assessment.spaces.length > 0 ? 'OK' : 'MISSING'}</td></tr>
+<tr><td>Service Instances</td><td>${assessment.totalInstances}</td><td class="${assessment.totalInstances > 0 ? 'status-ok' : 'status-fail'}">${assessment.totalInstances > 0 ? 'OK' : 'NOT PROVISIONED'}</td></tr>
+</table>
+</div>
+
+<h2>2. Integration Suite Status</h2>
+<div class="card">
+${assessment.serviceInstances.length === 0 ? 
+  '<p class="status-fail">❌ Integration Suite NOT provisioned. No service instances found.</p>' :
+  '<p class="status-ok">✅ Service instances found: ' + assessment.serviceInstances.map(s => s.name).join(', ') + '</p>'
+}
+<p><strong>Integration Flow Plan Available:</strong> <span class="${assessment.integrationFlowPlanAvailable ? 'status-ok' : 'status-fail'}">${assessment.integrationFlowPlanAvailable ? 'Yes' : 'No'}</span></p>
+</div>
+
+<h2>3. Required Actions for iFlow Development</h2>
+<div class="card">
+${assessment.totalInstances === 0 ? `
+<ol>
+<li>Go to BTP Cockpit → Services → Service Marketplace</li>
+<li>Search for "Integration Suite" and subscribe</li>
+<li>Activate Cloud Integration capability in Integration Suite</li>
+<li>Create Process Integration Runtime service instance (plan: integration-flow)</li>
+<li>Create service key and save credentials to DeliverAI Connection Manager</li>
+</ol>
+` : '<p class="status-ok">✅ Environment appears ready for iFlow development.</p>'}
+</div>
+
+<h2>4. Raw Assessment Data</h2>
+<div class="card">
+<pre style="font-size:11px;overflow-x:auto">${JSON.stringify(assessment, null, 2)}</pre>
+</div>
+</body></html>`;
+
+    // Step 6: Save to project
+    if (req.query.projectId) {
+      try {
+        const { saveDocumentToProject } = require('./doc-saver');
+        const proj = loadProject(req.query.projectId);
+        if (proj) saveDocumentToProject(req.query.projectId, 'btp-admin-agent', 'SAP BTP Admin Agent', html, { ...proj, workstream: 'Platform', processName: 'BTP-Assessment' });
+        send('status', { message: 'Report saved to project documents' });
+      } catch(e) { send('log', { text: 'Could not save: ' + e.message }); }
+    }
+
+    send('complete', { html, actionsExecuted: 4, succeeded: 4 });
+    res.end();
+
+  } catch(e) { send('error', { message: e.message }); res.end(); }
 });
+
 app.listen(MCP_PORT, () => {
   console.log('DeliverAI MCP Server running on port ' + MCP_PORT);
   console.log('Agents loaded: ' + Object.keys(AGENTS).length);

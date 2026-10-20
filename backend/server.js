@@ -414,6 +414,127 @@ app.post('/api/connections/test', async (req, res) => {
   } catch(e) { return res.json({ success: false, message: e.message }); }
 });
 
+
+// ── SAP BTP Admin MCP OAuth Flow ─────────────────────────────────────────────
+const SAP_MCP_CLIENT_ID = 'e789ba01-5612-47ee-bfe7-79e26411c1ca';
+const SAP_MCP_AUTH_URL = 'https://accounts.sap.com/oauth2/authorize';
+const SAP_MCP_TOKEN_URL = 'https://accounts.sap.com/oauth2/token';
+const SAP_MCP_REDIRECT = 'http://localhost/callback';
+const SAP_MCP_URL = 'https://sso.mcp.btp.cloud.sap/mcp';
+
+let oauthState = {};
+
+// Step 1: Start OAuth flow - redirect to SAP login
+app.get('/oauth/sap-btp-mcp', (req, res) => {
+  const crypto = require('crypto');
+  const state = crypto.randomBytes(16).toString('hex');
+  const verifier = crypto.randomBytes(32).toString('base64url');
+  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+  oauthState[state] = { verifier, ts: Date.now() };
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: SAP_MCP_CLIENT_ID,
+    redirect_uri: SAP_MCP_REDIRECT,
+    scope: 'openid',
+    state,
+    code_challenge: challenge,
+    code_challenge_method: 'S256'
+  });
+  res.redirect(SAP_MCP_AUTH_URL + '?' + params.toString());
+});
+
+// Step 2: OAuth callback - exchange code for token
+app.get('/oauth/callback', async (req, res) => {
+  const { code, state } = req.query;
+  if (!code || !state || !oauthState[state]) {
+    return res.send('<h2>OAuth Error</h2><p>Invalid state or missing code. <a href="http://localhost:3000">Back to DeliverAI</a></p>');
+  }
+  const { verifier } = oauthState[state];
+  delete oauthState[state];
+  try {
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: SAP_MCP_REDIRECT,
+      client_id: SAP_MCP_CLIENT_ID,
+      code_verifier: verifier
+    });
+    const r = await fetch(SAP_MCP_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    if (!r.ok) {
+      const err = await r.text();
+      return res.send('<h2>Token Error</h2><pre>' + err + '</pre><a href="http://localhost:3000">Back</a>');
+    }
+    const token = await r.json();
+    // Save to connections.json
+    const connPath = require('path').join(__dirname, '../connections.json');
+    const conns = fs.existsSync(connPath) ? JSON.parse(fs.readFileSync(connPath, 'utf8')) : { active: null, connections: [] };
+    const existing = conns.connections.findIndex(c => c.id === 'sap-btp-admin-mcp');
+    const conn = {
+      id: 'sap-btp-admin-mcp',
+      name: 'SAP BTP Admin MCP',
+      description: 'SAP BTP Administration MCP Server - SSO authenticated',
+      systemType: 'mcp',
+      authType: 'bearer',
+      hostUrl: SAP_MCP_URL,
+      bearerToken: token.access_token,
+      refreshToken: token.refresh_token || '',
+      tokenExpiry: token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : '',
+      tokenUrl: SAP_MCP_TOKEN_URL,
+      clientId: SAP_MCP_CLIENT_ID
+    };
+    if (existing !== -1) conns.connections[existing] = conn;
+    else conns.connections.push(conn);
+    fs.writeFileSync(connPath, JSON.stringify(conns, null, 2), 'utf8');
+    res.send('<html><body style="font-family:Arial;max-width:600px;margin:40px auto;padding:20px"><h2 style="color:#16a34a">✅ SAP BTP Admin MCP Connected!</h2><p>Token saved to connections.json. You can now use the BTP Admin Agent.</p><p><a href="http://localhost:3000" style="background:#0070F2;color:white;padding:10px 20px;border-radius:8px;text-decoration:none">Back to DeliverAI</a></p></body></html>');
+  } catch(e) {
+    res.send('<h2>Error</h2><p>' + e.message + '</p><a href="http://localhost:3000">Back</a>');
+  }
+});
+
+// Step 3: Check MCP connection status
+app.get('/oauth/sap-btp-mcp/status', async (req, res) => {
+  const connPath = require('path').join(__dirname, '../connections.json');
+  if (!fs.existsSync(connPath)) return res.json({ connected: false });
+  const conns = JSON.parse(fs.readFileSync(connPath, 'utf8'));
+  const conn = conns.connections.find(c => c.id === 'sap-btp-admin-mcp');
+  if (!conn || !conn.bearerToken) return res.json({ connected: false });
+  // Test the token against the MCP server
+  try {
+    const r = await fetch(SAP_MCP_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + conn.bearerToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} })
+    });
+    const data = await r.json();
+    res.json({ connected: r.ok, tools: data.result ? data.result.tools.length : 0 });
+  } catch(e) {
+    res.json({ connected: false, error: e.message });
+  }
+});
+
+// Step 4: Call any BTP Admin MCP tool
+app.post('/btp-mcp-call', async (req, res) => {
+  const { tool, params: toolParams } = req.body;
+  if (!tool) return res.status(400).json({ error: 'tool name required' });
+  const connPath = require('path').join(__dirname, '../connections.json');
+  const conns = JSON.parse(fs.readFileSync(connPath, 'utf8'));
+  const conn = conns.connections.find(c => c.id === 'sap-btp-admin-mcp');
+  if (!conn || !conn.bearerToken) return res.status(401).json({ error: 'Not connected to SAP BTP Admin MCP. Go to Settings to connect.' });
+  try {
+    const r = await fetch(SAP_MCP_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + conn.bearerToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method: 'tools/call', params: { name: tool, arguments: toolParams || {} } })
+    });
+    const data = await r.json();
+    res.json({ success: true, result: data.result, error: data.error });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.listen(PORT, () => {
   console.log('\n╔══════════════════════════════════════════════╗');
   console.log('║  DeliverAI Backend           :' + PORT + '          ║');
